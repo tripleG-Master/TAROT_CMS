@@ -8,9 +8,9 @@ function buildSequelize(databaseName) {
     dialect: "postgres",
     host: process.env.PGHOST || "localhost",
     port: process.env.PGPORT ? Number(process.env.PGPORT) : 5432,
-    database: databaseName || process.env.PGDATABASE || "tarot_cms",
-    username: process.env.PGUSER || "postgres",
-    password: process.env.PGPASSWORD || "postgres",
+    database: databaseName || process.env.PGDATABASE,
+    username: process.env.PGUSER,
+    password: process.env.PGPASSWORD,
     logging: false
   });
 }
