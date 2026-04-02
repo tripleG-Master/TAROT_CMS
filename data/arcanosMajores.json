@@ -1,0 +1,178 @@
+[
+    {
+        "Número": "0",
+        "Nombre": "El Loco",
+        "Descripción Visual": "Joven con mochila caminando al borde de un precipicio, con un perro a sus pies y el sol al fondo.",
+        "Significado (Luz)": "Nuevos comienzos, inocencia, fe, espontaneidad.",
+        "Significado (Sombra)": "Imprudencia, caos, indecisión, recklessness.",
+        "Palabras Clave": "\"Libertad"
+    },
+    {
+        "Número": "1",
+        "Nombre": "El Mago",
+        "Descripción Visual": "Hombre con figura de infinito sobre la cabeza, manipulando los cuatro elementos sobre una mesa.",
+        "Significado (Luz)": "Manifestación, habilidad, poder personal, iniciativa.",
+        "Significado (Sombra)": "Manipulación, engaño, falta de enfoque.",
+        "Palabras Clave": "\"Creatividad"
+    },
+    {
+        "Número": "2",
+        "Nombre": "La Sacerdotisa",
+        "Descripción Visual": "Mujer sentada entre pilares negros y blancos, con un velo y un rollo en el regazo.",
+        "Significado (Luz)": "Intuición, misterio, sabiduría interior, subconsciente.",
+        "Significado (Sombra)": "Secretos ocultos, desconexión emocional, represión.",
+        "Palabras Clave": "\"Pasividad"
+    },
+    {
+        "Número": "3",
+        "Nombre": "La Emperatriz",
+        "Descripción Visual": "Mujer en trono fértil, con corona de estrellas, rodeada de naturaleza abundante.",
+        "Significado (Luz)": "Abundancia, nurtura, creatividad, maternidad.",
+        "Significado (Sombra)": "Dependencia, sofoco, bloqueo creativo.",
+        "Palabras Clave": "\"Fertilidad"
+    },
+    {
+        "Número": "4",
+        "Nombre": "El Emperador",
+        "Descripción Visual": "Hombre en trono con carnero, sosteniendo cetro y orbe, simbolizando autoridad.",
+        "Significado (Luz)": "Estructura, autoridad, control, paternidad.",
+        "Significado (Sombra)": "Rigidez, tiranía, abuso de poder.",
+        "Palabras Clave": "\"Estabilidad"
+    },
+    {
+        "Número": "5",
+        "Nombre": "El Hierofante",
+        "Descripción Visual": "Figura papal en trono, bendiciendo a dos acólitos, con llaves y triple cruz.",
+        "Significado (Luz)": "Tradición, conformidad, guía espiritual, enseñanza.",
+        "Significado (Sombra)": "Dogmatismo, rebelión contra normas, fanatismo.",
+        "Palabras Clave": "\"Religión"
+    },
+    {
+        "Número": "6",
+        "Nombre": "Los Enamorados",
+        "Descripción Visual": "Pareja desnuda bajo un ángel, con un árbol en llamas y una espada.",
+        "Significado (Luz)": "Amor, unión, elecciones, alineación de valores.",
+        "Significado (Sombra)": "Desarmonía, indecisión, tentación.",
+        "Palabras Clave": "\"Relaciones"
+    },
+    {
+        "Número": "7",
+        "Nombre": "El Carro",
+        "Descripción Visual": "Príncipe en carro triunfal tirado por esfinges negra y blanca, con armadura y estrellas.",
+        "Significado (Luz)": "Victoria, determinación, control de opuestos, viaje.",
+        "Significado (Sombra)": "Derrota, agresión, dirección errónea.",
+        "Palabras Clave": "\"Éxito"
+    },
+    {
+        "Número": "8",
+        "Nombre": "La Fuerza",
+        "Descripción Visual": "Mujer abriendo fauces de un león, con infinito sobre la cabeza y flores.",
+        "Significado (Luz)": "Coraje interior, paciencia, compasión, dominio suave.",
+        "Significado (Sombra)": "Debilidad, duda, ira descontrolada.",
+        "Palabras Clave": "\"Fortaleza"
+    },
+    {
+        "Número": "9",
+        "Nombre": "El Ermitaño",
+        "Descripción Visual": "Viejo encapuchado con linterna y bastón en montaña nevada.",
+        "Significado (Luz)": "Búsqueda interior, guía, soledad, introspección.",
+        "Significado (Sombra)": "Aislamiento, rechazo, apatía.",
+        "Palabras Clave": "\"Sabiduría"
+    },
+    {
+        "Número": "10",
+        "Nombre": "La Rueda de la Fortuna",
+        "Descripción Visual": "Rueda giratoria con figuras ascendiendo y descendiendo, esfinge y nubes.",
+        "Significado (Luz)": "Cambio, ciclos, destino, oportunidad.",
+        "Significado (Sombra)": "Estancamiento, mala suerte, resistencia al cambio.",
+        "Palabras Clave": "\"Fortuna"
+    },
+    {
+        "Número": "11",
+        "Nombre": "La Justicia",
+        "Descripción Visual": "Mujer en trono con balanza y espada, pilares y velo al fondo.",
+        "Significado (Luz)": "Equidad, verdad, ley, causa y efecto.",
+        "Significado (Sombra)": "Injusticia, deshonestidad, desbalance.",
+        "Palabras Clave": "\"Verdad"
+    },
+    {
+        "Número": "12",
+        "Nombre": "El Colgado",
+        "Descripción Visual": "Hombre suspendido cabeza abajo de un pie, con halo y pies tranquilos.",
+        "Significado (Luz)": "Sacrificio, nueva perspectiva, rendición, pausa.",
+        "Significado (Sombra)": "Estancamiento, sacrificio inútil, egoísmo.",
+        "Palabras Clave": "\"Entrega"
+    },
+    {
+        "Número": "13",
+        "Nombre": "La Muerte",
+        "Descripción Visual": "Esqueleto en armadura segando, con cuerpos cayendo y sol naciente.",
+        "Significado (Luz)": "Transformación, fin de ciclo, renovación.",
+        "Significado (Sombra)": "Miedo al cambio, estancamiento, pérdida.",
+        "Palabras Clave": "\"Cambio radical"
+    },
+    {
+        "Número": "14",
+        "Nombre": "La Templanza",
+        "Descripción Visual": "Ángel vertiendo agua entre dos copas, con pie en agua y sol tríada.",
+        "Significado (Luz)": "Moderación, equilibrio, armonía, paciencia.",
+        "Significado (Sombra)": "Desbalance, exceso, impaciencia.",
+        "Palabras Clave": "\"Armonía"
+    },
+    {
+        "Número": "15",
+        "Nombre": "El Diablo",
+        "Descripción Visual": "Figura cornuda encadenando a hombre y mujer, antorcha y frutos prohibidos.",
+        "Significado (Luz)": "Adicción, materialismo, sombra, liberación posible.",
+        "Significado (Sombra)": "Esclavitud, ignorancia, materialismo destructivo.",
+        "Palabras Clave": "\"Tentación"
+    },
+    {
+        "Número": "16",
+        "Nombre": "La Torre",
+        "Descripción Visual": "Torre golpeada por rayo, figuras cayendo entre llamas y nubes.",
+        "Significado (Luz)": "Revelación repentina, caos liberador, despertar.",
+        "Significado (Sombra)": "Desastre evitable, miedo al cambio, ruina.",
+        "Palabras Clave": "\"Destrucción"
+    },
+    {
+        "Número": "17",
+        "Nombre": "La Estrella",
+        "Descripción Visual": "Mujer desnuda vertiendo agua a tierra y arroyo, con estrellas grandes y pequeñas.",
+        "Significado (Luz)": "Esperanza, inspiración, serenidad, guía espiritual.",
+        "Significado (Sombra)": "Desconexión, duda, pesimismo.",
+        "Palabras Clave": "\"Esperanza"
+    },
+    {
+        "Número": "18",
+        "Nombre": "La Luna",
+        "Descripción Visual": "Luna con lobos aullando, camino entre torres, crustáceos emergiendo.",
+        "Significado (Luz)": "Ilusión, intuición, subconsciente, miedos.",
+        "Significado (Sombra)": "Confusión, engaño, ansiedad.",
+        "Palabras Clave": "\"Ilusión"
+    },
+    {
+        "Número": "19",
+        "Nombre": "El Sol",
+        "Descripción Visual": "Niño en caballo blanco bajo sol radiante, bandera y girasoles.",
+        "Significado (Luz)": "Alegría, éxito, vitalidad, claridad.",
+        "Significado (Sombra)": "Falta de éxito, ego falso, depresión temporal.",
+        "Palabras Clave": "\"Felicidad"
+    },
+    {
+        "Número": "20",
+        "Nombre": "El Juicio",
+        "Descripción Visual": "Ángel tocando trompeta, muertos resucitando de tumbas.",
+        "Significado (Luz)": "Renacimiento, absolución, llamada interior.",
+        "Significado (Sombra)": "Demora, duda, estancamiento.",
+        "Palabras Clave": "\"Despertar"
+    },
+    {
+        "Número": "21",
+        "Nombre": "El Mundo",
+        "Descripción Visual": "Mujer bailando en guirnalda, con varitas y cuatro figuras vivientes.",
+        "Significado (Luz)": "Culminación, integración, logro, plenitud.",
+        "Significado (Sombra)": "Falta de cierre, estancamiento, incompletud.",
+        "Palabras Clave": "\"Completitud"
+    }
+]

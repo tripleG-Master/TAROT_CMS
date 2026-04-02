@@ -1,0 +1,36 @@
+<main class="container py-4">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+      <h1 class="h3 brand mb-1">Importar Arcanos</h1>
+      <div class="muted">Pega un JSON (array u objeto) y el CMS hará upsert por número (0–21).</div>
+    </div>
+    <a class="btn btn-outline-light" href="/arcanos">Volver</a>
+  </div>
+
+  {{#if result}}
+    <div class="alert alert-success">
+      Importación lista: {{result.created}} creados, {{result.updated}} actualizados, {{result.skipped}} omitidos.
+    </div>
+  {{/if}}
+
+  {{#if error}}
+    <div class="alert alert-danger">{{error}}</div>
+  {{/if}}
+
+  <div class="card p-4">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+      <div class="muted">Atajo local</div>
+      <form method="POST" action="/arcanos/import/local" class="m-0">
+        <button class="btn btn-outline-info" type="submit">Importar data/arcanosMajores.json</button>
+      </form>
+    </div>
+    <hr class="border-secondary my-3" />
+    <form method="POST" action="/arcanos/import">
+      <label class="form-label">JSON</label>
+      <textarea name="json" rows="18" class="form-control" spellcheck="false" placeholder='[{"Número":"0","Nombre":"El Loco",...}]'>{{json}}</textarea>
+      <div class="d-flex align-items-center justify-content-end gap-2 mt-3">
+        <button class="btn btn-mystic text-dark fw-semibold" type="submit">Importar</button>
+      </div>
+    </form>
+  </div>
+</main>

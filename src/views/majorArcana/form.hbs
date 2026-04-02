@@ -1,0 +1,54 @@
+<main class="container py-4">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+      <h1 class="h3 brand mb-1">{{heading}}</h1>
+      <div class="muted">Completa los campos y guarda cambios.</div>
+    </div>
+    <a class="btn btn-outline-light" href="/arcanos">Volver</a>
+  </div>
+
+  <div class="card p-4">
+    <form method="POST" action="{{formAction}}">
+      <div class="row g-3">
+        <div class="col-md-8">
+          <label class="form-label">Nombre</label>
+          <input name="nombre" class="form-control {{#if errors.nombre}}is-invalid{{/if}}" value="{{arcano.nombre}}" placeholder="El Loco, La Emperatriz..." />
+          {{#if errors.nombre}}<div class="invalid-feedback">{{errors.nombre}}</div>{{/if}}
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Número (0-21)</label>
+          <input name="numero" inputmode="numeric" class="form-control {{#if errors.numero}}is-invalid{{/if}}" value="{{arcano.numero}}" placeholder="0" />
+          {{#if errors.numero}}<div class="invalid-feedback">{{errors.numero}}</div>{{/if}}
+        </div>
+
+        <div class="col-12">
+          <label class="form-label">Descripción visual</label>
+          <textarea name="descripcion_visual" rows="3" class="form-control">{{arcano.descripcion_visual}}</textarea>
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">Significado (Luz)</label>
+          <textarea name="significado_luz" rows="5" class="form-control">{{arcano.significado_luz}}</textarea>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Significado (Sombra)</label>
+          <textarea name="significado_sombra" rows="5" class="form-control">{{arcano.significado_sombra}}</textarea>
+        </div>
+
+        <div class="col-md-8">
+          <label class="form-label">Palabras clave (separadas por comas)</label>
+          <input name="palabras_clave" class="form-control" value="{{arcano.palabras_clave}}" placeholder="inicio, libertad, intuición" />
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">URL de imagen</label>
+          <input name="imagen_url" class="form-control" value="{{arcano.imagen_url}}" placeholder="https://..." />
+        </div>
+
+        <div class="col-12 d-flex align-items-center justify-content-end gap-2 mt-2">
+          <a class="btn btn-outline-light" href="{{cancelHref}}">Cancelar</a>
+          <button class="btn btn-mystic text-dark fw-semibold" type="submit">Guardar</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</main>
