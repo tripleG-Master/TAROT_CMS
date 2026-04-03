@@ -1,5 +1,6 @@
 const { Client } = require("pg");
 const { Sequelize, DataTypes } = require("sequelize");
+const { initModels } = require("./models");
 
 function buildSequelize(databaseName) {
   if (process.env.DATABASE_URL) return new Sequelize(process.env.DATABASE_URL, { logging: false });
@@ -15,66 +16,8 @@ function buildSequelize(databaseName) {
   });
 }
 
-function defineMajorArcana(sequelizeInstance) {
-  return sequelizeInstance.define(
-    "MajorArcana",
-    {
-      id: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        autoIncrement: true,
-        primaryKey: true
-      },
-      nombre: {
-        type: DataTypes.TEXT,
-        allowNull: false
-      },
-      numero: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        unique: true,
-        validate: {
-          min: 0,
-          max: 21,
-          isInt: true
-        }
-      },
-      significado_luz: {
-        type: DataTypes.TEXT,
-        allowNull: false,
-        defaultValue: ""
-      },
-      significado_sombra: {
-        type: DataTypes.TEXT,
-        allowNull: false,
-        defaultValue: ""
-      },
-      descripcion_visual: {
-        type: DataTypes.TEXT,
-        allowNull: false,
-        defaultValue: ""
-      },
-      palabras_clave: {
-        type: DataTypes.TEXT,
-        allowNull: false,
-        defaultValue: ""
-      },
-      imagen_url: {
-        type: DataTypes.TEXT,
-        allowNull: false,
-        defaultValue: ""
-      }
-    },
-    {
-      tableName: "MajorArcana",
-      freezeTableName: true,
-      timestamps: false
-    }
-  );
-}
-
 let sequelize = buildSequelize();
-let MajorArcana = defineMajorArcana(sequelize);
+let models = initModels(sequelize, DataTypes);
 
 async function ensureDatabaseExists(databaseName) {
   const adminDb = process.env.PGADMIN_DB ? String(process.env.PGADMIN_DB) : "postgres";
@@ -105,16 +48,33 @@ async function initDb() {
     if (!process.env.DATABASE_URL && code === "3D000") {
       await ensureDatabaseExists(targetDb);
       sequelize = buildSequelize(targetDb);
-      MajorArcana = defineMajorArcana(sequelize);
+      models = initModels(sequelize, DataTypes);
       await sequelize.authenticate();
     } else {
       throw err;
     }
   }
 
+  await sequelize.query(`
+    ALTER TABLE IF EXISTS "MajorArcana"
+    ADD COLUMN IF NOT EXISTS planeta TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS numero_simbolismo TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS simbologia_mesa_elementos TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS simbologia_lemniscata TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS simbologia_ropa TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS significado_amor_luz TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS significado_amor_sombra TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS significado_trabajo_luz TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS significado_trabajo_sombra TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS significado_salud_luz TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS significado_salud_sombra TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS extra JSONB NOT NULL DEFAULT '{}'::jsonb;
+  `);
+
   await sequelize.sync();
 }
 
 module.exports = { initDb };
 Object.defineProperty(module.exports, "sequelize", { get: () => sequelize });
-Object.defineProperty(module.exports, "MajorArcana", { get: () => MajorArcana });
+Object.defineProperty(module.exports, "MajorArcana", { get: () => models.MajorArcana });
+Object.defineProperty(module.exports, "models", { get: () => models });

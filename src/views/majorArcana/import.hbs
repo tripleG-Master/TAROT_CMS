@@ -2,7 +2,7 @@
   <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
     <div>
       <h1 class="h3 brand mb-1">Importar Arcanos</h1>
-      <div class="muted">Pega un JSON (array u objeto) y el CMS hará upsert por número (0–21).</div>
+      <div class="muted">Pega un JSON o CSV/TSV y el CMS hará upsert por número (0–21).</div>
     </div>
     <a class="btn btn-outline-light" href="/arcanos">Volver</a>
   </div>
@@ -30,6 +30,28 @@
       <textarea name="json" rows="18" class="form-control" spellcheck="false" placeholder='[{"Número":"0","Nombre":"El Loco",...}]'>{{json}}</textarea>
       <div class="d-flex align-items-center justify-content-end gap-2 mt-3">
         <button class="btn btn-mystic text-dark fw-semibold" type="submit">Importar</button>
+      </div>
+    </form>
+
+    <hr class="border-secondary my-4" />
+
+    <form method="POST" action="/arcanos/import/csv">
+      <label class="form-label">CSV / TSV</label>
+      <div class="muted mb-2">Soporta separador por tab (recomendado), coma o punto y coma. La primera fila debe ser el header.</div>
+      <textarea name="csv" rows="10" class="form-control" spellcheck="false" placeholder="nombre	numero	palabras_clave	...">{{csv}}</textarea>
+      <div class="d-flex align-items-center justify-content-end gap-2 mt-3">
+        <button class="btn btn-mystic text-dark fw-semibold" type="submit">Importar CSV</button>
+      </div>
+    </form>
+
+    <hr class="border-secondary my-4" />
+
+    <form method="POST" action="/arcanos/import/csv/file" enctype="multipart/form-data">
+      <label class="form-label">Subir CSV</label>
+      <div class="muted mb-2">Selecciona un archivo .csv/.tsv (tab, coma o punto y coma). El header debe coincidir con los campos.</div>
+      <input class="form-control" type="file" name="csv_file" accept=".csv,.tsv,text/csv,text/tab-separated-values" required />
+      <div class="d-flex align-items-center justify-content-end gap-2 mt-3">
+        <button class="btn btn-mystic text-dark fw-semibold" type="submit">Subir e importar</button>
       </div>
     </form>
   </div>

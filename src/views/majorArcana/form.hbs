@@ -44,6 +44,71 @@
           <input name="imagen_url" class="form-control" value="{{arcano.imagen_url}}" placeholder="https://..." />
         </div>
 
+        <div class="col-12">
+          <hr class="border-secondary my-2" />
+          <div class="fw-semibold">Atributos base</div>
+          <div class="muted">Opcional. Pensado para expandir el contenido sin romper V1.</div>
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">Planeta</label>
+          <input name="planeta" class="form-control" value="{{arcano.planeta}}" placeholder="Mercurio, Venus..." />
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Simbología del número</label>
+          <input name="numero_simbolismo" class="form-control" value="{{arcano.numero_simbolismo}}" placeholder="La unidad, el punto de origen..." />
+        </div>
+
+        <div class="col-12">
+          <hr class="border-secondary my-2" />
+          <div class="fw-semibold">Simbología técnica</div>
+        </div>
+
+        <div class="col-12">
+          <label class="form-label">Mesa de elementos</label>
+          <textarea name="simbologia_mesa_elementos" rows="2" class="form-control">{{arcano.simbologia_mesa_elementos}}</textarea>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Lemniscata</label>
+          <textarea name="simbologia_lemniscata" rows="2" class="form-control">{{arcano.simbologia_lemniscata}}</textarea>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Ropa roja y blanca</label>
+          <textarea name="simbologia_ropa" rows="2" class="form-control">{{arcano.simbologia_ropa}}</textarea>
+        </div>
+
+        <div class="col-12">
+          <hr class="border-secondary my-2" />
+          <div class="fw-semibold">Significados por área</div>
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">Amor (Derecho)</label>
+          <textarea name="significado_amor_luz" rows="3" class="form-control">{{arcano.significado_amor_luz}}</textarea>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Amor (Invertido)</label>
+          <textarea name="significado_amor_sombra" rows="3" class="form-control">{{arcano.significado_amor_sombra}}</textarea>
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">Trabajo (Derecho)</label>
+          <textarea name="significado_trabajo_luz" rows="3" class="form-control">{{arcano.significado_trabajo_luz}}</textarea>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Trabajo (Invertido)</label>
+          <textarea name="significado_trabajo_sombra" rows="3" class="form-control">{{arcano.significado_trabajo_sombra}}</textarea>
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">Salud (Derecho)</label>
+          <textarea name="significado_salud_luz" rows="3" class="form-control">{{arcano.significado_salud_luz}}</textarea>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Salud (Invertido)</label>
+          <textarea name="significado_salud_sombra" rows="3" class="form-control">{{arcano.significado_salud_sombra}}</textarea>
+        </div>
+
         <div class="col-12 d-flex align-items-center justify-content-end gap-2 mt-2">
           <a class="btn btn-outline-light" href="{{cancelHref}}">Cancelar</a>
           <button class="btn btn-mystic text-dark fw-semibold" type="submit">Guardar</button>

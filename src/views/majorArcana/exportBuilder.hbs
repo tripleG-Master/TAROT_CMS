@@ -1,0 +1,94 @@
+<main class="container py-4">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+      <h1 class="h3 brand mb-1">Export Builder</h1>
+      <div class="muted">Selecciona campos, previsualiza y exporta sin romper V1/V2.</div>
+    </div>
+    <a class="btn btn-outline-light" href="/arcanos">Volver</a>
+  </div>
+
+  {{#if error}}
+    <div class="alert alert-danger">{{error}}</div>
+  {{/if}}
+
+  <div class="row g-3">
+    <div class="col-lg-4">
+      <div class="card p-4">
+        <form method="POST" action="/arcanos/export/builder">
+          <div class="mb-3">
+            <label class="form-label">Versión base</label>
+            <select class="form-select" name="version">
+              <option value="1" {{#if (eq version "1")}}selected{{/if}}>V1 (compat)</option>
+              <option value="2" {{#if (eq version "2")}}selected{{/if}}>V2 (extendida)</option>
+            </select>
+          </div>
+
+          <div class="mb-2 fw-semibold">Campos</div>
+          <div class="d-grid gap-2">
+            <label class="form-check">
+              <input class="form-check-input" type="checkbox" name="fields" value="base" {{#if selected.base}}checked{{/if}} />
+              <span class="form-check-label">Base (id, number, slug, name, arcana_type)</span>
+            </label>
+            <label class="form-check">
+              <input class="form-check-input" type="checkbox" name="fields" value="keywords" {{#if selected.keywords}}checked{{/if}} />
+              <span class="form-check-label">Keywords</span>
+            </label>
+            <label class="form-check">
+              <input class="form-check-input" type="checkbox" name="fields" value="base_attributes" {{#if selected.base_attributes}}checked{{/if}} />
+              <span class="form-check-label">Base attributes (planet/number_symbolism)</span>
+            </label>
+            <label class="form-check">
+              <input class="form-check-input" type="checkbox" name="fields" value="symbolism" {{#if selected.symbolism}}checked{{/if}} />
+              <span class="form-check-label">Symbolism</span>
+            </label>
+            <label class="form-check">
+              <input class="form-check-input" type="checkbox" name="fields" value="meanings_general" {{#if selected.meanings_general}}checked{{/if}} />
+              <span class="form-check-label">Meanings (general)</span>
+            </label>
+            <label class="form-check">
+              <input class="form-check-input" type="checkbox" name="fields" value="meanings_details" {{#if selected.meanings_details}}checked{{/if}} />
+              <span class="form-check-label">Meanings (advice/career)</span>
+            </label>
+            <label class="form-check">
+              <input class="form-check-input" type="checkbox" name="fields" value="meanings_by_area" {{#if selected.meanings_by_area}}checked{{/if}} />
+              <span class="form-check-label">Meanings by area (love/work/health)</span>
+            </label>
+            <label class="form-check">
+              <input class="form-check-input" type="checkbox" name="fields" value="visual_description" {{#if selected.visual_description}}checked{{/if}} />
+              <span class="form-check-label">Visual description</span>
+            </label>
+            <label class="form-check">
+              <input class="form-check-input" type="checkbox" name="fields" value="image_url" {{#if selected.image_url}}checked{{/if}} />
+              <span class="form-check-label">Image URL</span>
+            </label>
+            <label class="form-check">
+              <input class="form-check-input" type="checkbox" name="fields" value="attributes" {{#if selected.attributes}}checked{{/if}} />
+              <span class="form-check-label">Attributes (element/astrology/color)</span>
+            </label>
+            <label class="form-check">
+              <input class="form-check-input" type="checkbox" name="fields" value="extra" {{#if selected.extra}}checked{{/if}} />
+              <span class="form-check-label">Extra (JSON libre)</span>
+            </label>
+          </div>
+
+          <hr class="border-secondary my-3" />
+
+          <div class="d-flex gap-2">
+            <button class="btn btn-mystic text-dark fw-semibold" type="submit">Previsualizar</button>
+            <a class="btn btn-outline-info" href="{{downloadUrl}}">Descargar</a>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="col-lg-8">
+      <div class="card p-4">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+          <div class="fw-semibold">Preview (primeros {{previewCount}})</div>
+          <div class="muted">{{endpointHint}}</div>
+        </div>
+        <textarea class="form-control" rows="20" spellcheck="false" readonly>{{{preview}}}</textarea>
+      </div>
+    </div>
+  </div>
+</main>

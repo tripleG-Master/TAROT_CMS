@@ -44,6 +44,64 @@
             <div class="fw-semibold mb-1">Significado (Sombra)</div>
             <div class="muted" style="white-space: pre-wrap;">{{arcano.significado_sombra}}</div>
           </div>
+
+          {{#if arcano.planeta}}
+            <div class="col-12">
+              <hr class="border-secondary my-2" />
+              <div class="fw-semibold mb-1">Atributos base</div>
+              <div class="muted" style="white-space: pre-wrap;">Planeta: {{arcano.planeta}}</div>
+              {{#if arcano.numero_simbolismo}}
+                <div class="muted" style="white-space: pre-wrap;">Número (simbología): {{arcano.numero_simbolismo}}</div>
+              {{/if}}
+            </div>
+          {{/if}}
+
+          {{#if arcano.simbologia_mesa_elementos}}
+            <div class="col-12">
+              <hr class="border-secondary my-2" />
+              <div class="fw-semibold mb-1">Simbología técnica</div>
+              <div class="muted" style="white-space: pre-wrap;">Mesa de elementos: {{arcano.simbologia_mesa_elementos}}</div>
+              {{#if arcano.simbologia_lemniscata}}
+                <div class="muted mt-2" style="white-space: pre-wrap;">Lemniscata: {{arcano.simbologia_lemniscata}}</div>
+              {{/if}}
+              {{#if arcano.simbologia_ropa}}
+                <div class="muted mt-2" style="white-space: pre-wrap;">Ropa roja y blanca: {{arcano.simbologia_ropa}}</div>
+              {{/if}}
+            </div>
+          {{/if}}
+
+          {{#if arcano.significado_amor_luz}}
+            <div class="col-12">
+              <hr class="border-secondary my-2" />
+              <div class="fw-semibold mb-1">Significados por área</div>
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <div class="fw-semibold mb-1">Amor (Derecho)</div>
+                  <div class="muted" style="white-space: pre-wrap;">{{arcano.significado_amor_luz}}</div>
+                </div>
+                <div class="col-md-6">
+                  <div class="fw-semibold mb-1">Amor (Invertido)</div>
+                  <div class="muted" style="white-space: pre-wrap;">{{arcano.significado_amor_sombra}}</div>
+                </div>
+                <div class="col-md-6">
+                  <div class="fw-semibold mb-1">Trabajo (Derecho)</div>
+                  <div class="muted" style="white-space: pre-wrap;">{{arcano.significado_trabajo_luz}}</div>
+                </div>
+                <div class="col-md-6">
+                  <div class="fw-semibold mb-1">Trabajo (Invertido)</div>
+                  <div class="muted" style="white-space: pre-wrap;">{{arcano.significado_trabajo_sombra}}</div>
+                </div>
+                <div class="col-md-6">
+                  <div class="fw-semibold mb-1">Salud (Derecho)</div>
+                  <div class="muted" style="white-space: pre-wrap;">{{arcano.significado_salud_luz}}</div>
+                </div>
+                <div class="col-md-6">
+                  <div class="fw-semibold mb-1">Salud (Invertido)</div>
+                  <div class="muted" style="white-space: pre-wrap;">{{arcano.significado_salud_sombra}}</div>
+                </div>
+              </div>
+            </div>
+          {{/if}}
         </div>
       </div>
     </div>
