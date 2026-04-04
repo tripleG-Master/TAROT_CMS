@@ -1,8 +1,10 @@
 const fs = require("node:fs");
 const path = require("node:path");
+const sharp = require("sharp");
 const db = require("../db");
 
 const imgDir = path.join(__dirname, "..", "..", "public", "img");
+const thumbDir = path.join(imgDir, "thumbs");
 const imageAliases = {
   "el-hierofante": "el-papa"
 };
@@ -62,6 +64,98 @@ function resolveImageUrl(nombre, imagenUrl) {
   return `/public/img/${fileName}`;
 }
 
+function resolveThumbUrl(nombre, imagenThumbUrl, imagenUrl) {
+  const current = cleanText(imagenThumbUrl);
+  if (current) return current;
+
+  const image = cleanText(imagenUrl);
+  if (image) {
+    const match = image.match(/^\/public\/img\/(.+)$/);
+    if (match) {
+      const baseName = match[1].replace(/\.[^.]+$/, "");
+      const candidates = [
+        `${baseName}.thumb.webp`,
+        `${baseName}.thumb.jpg`,
+        `${baseName}.thumb.jpeg`,
+        `${baseName}.thumb.png`
+      ];
+      const existing = candidates.find((f) => fs.existsSync(path.join(thumbDir, f)));
+      if (existing) return `/public/img/thumbs/${existing}`;
+    }
+  }
+
+  let base = slugifyDash(nombre);
+  base = imageAliases[base] || base;
+  const candidates = [
+    `${base}.thumb.webp`,
+    `${base}.thumb.jpg`,
+    `${base}.thumb.jpeg`,
+    `${base}.thumb.png`
+  ];
+  const existing = candidates.find((f) => fs.existsSync(path.join(thumbDir, f)));
+  if (existing) return `/public/img/thumbs/${existing}`;
+  return "";
+}
+
+function localPublicImgPath(url) {
+  const m = String(url || "").match(/^\/public\/img\/(.+)$/);
+  if (!m) return null;
+  return path.join(imgDir, m[1]);
+}
+
+function ensureDirs() {
+  fs.mkdirSync(imgDir, { recursive: true });
+  fs.mkdirSync(thumbDir, { recursive: true });
+}
+
+async function writeImageWebp(buffer, filePath, maxWidth, quality) {
+  const pipeline = sharp(buffer).rotate().resize({ width: maxWidth, withoutEnlargement: true }).webp({ quality });
+  await pipeline.toFile(filePath);
+}
+
+async function writeThumbFromFilePath(inputPath, thumbPath) {
+  await sharp(inputPath)
+    .rotate()
+    .resize({ width: 256, withoutEnlargement: true })
+    .webp({ quality: 70 })
+    .toFile(thumbPath);
+}
+
+async function saveImageAndThumb({ nombre, buffer }) {
+  ensureDirs();
+  let base = slugifyDash(nombre);
+  base = imageAliases[base] || base;
+
+  const imageFile = `${base}.webp`;
+  const thumbFile = `${base}.thumb.webp`;
+
+  const imagePath = path.join(imgDir, imageFile);
+  const thumbPath = path.join(thumbDir, thumbFile);
+
+  await writeImageWebp(buffer, imagePath, 1600, 82);
+  await writeImageWebp(buffer, thumbPath, 256, 70);
+
+  return {
+    imagen_url: `/public/img/${imageFile}`,
+    imagen_thumb_url: `/public/img/thumbs/${thumbFile}`
+  };
+}
+
+async function ensureThumbForLocalImage(nombre, imagenUrl) {
+  const localPath = localPublicImgPath(imagenUrl);
+  if (!localPath || !fs.existsSync(localPath)) return "";
+  ensureDirs();
+
+  let base = slugifyDash(nombre);
+  base = imageAliases[base] || base;
+  const thumbFile = `${base}.thumb.webp`;
+  const thumbPath = path.join(thumbDir, thumbFile);
+  if (!fs.existsSync(thumbPath)) {
+    await writeThumbFromFilePath(localPath, thumbPath);
+  }
+  return `/public/img/thumbs/${thumbFile}`;
+}
+
 function validateArcano(body) {
   const errors = {};
 
@@ -85,6 +179,7 @@ function validateArcano(body) {
     descripcion_visual: String(body.descripcion_visual || "").trim(),
     palabras_clave: normalizeKeywords(body.palabras_clave),
     imagen_url: String(body.imagen_url || "").trim(),
+    imagen_thumb_url: String(body.imagen_thumb_url || "").trim(),
     planeta: String(body.planeta || "").trim(),
     numero_simbolismo: String(body.numero_simbolismo || "").trim(),
     simbologia_mesa_elementos: String(body.simbologia_mesa_elementos || "").trim(),
@@ -167,6 +262,11 @@ function mapImportRow(raw) {
   const imagen_url = resolveImageUrl(
     nombre,
     normalized.imagen_url ?? normalized.image_url ?? raw?.imagen_url ?? raw?.image_url
+  );
+  const imagen_thumb_url = resolveThumbUrl(
+    nombre,
+    normalized.imagen_thumb_url ?? normalized.image_thumb_url ?? raw?.imagen_thumb_url ?? raw?.image_thumb_url,
+    imagen_url
   );
 
   let extra = {};
@@ -284,6 +384,7 @@ function mapImportRow(raw) {
     descripcion_visual,
     palabras_clave,
     imagen_url,
+    imagen_thumb_url,
     planeta,
     numero_simbolismo,
     simbologia_mesa_elementos,
@@ -321,6 +422,12 @@ async function performImport(rows) {
   const items = Array.from(mapped.values()).sort((a, b) => a.numero - b.numero);
   if (items.length === 0) {
     return { items: [], created: 0, updated: 0, skipped: rows.length };
+  }
+
+  for (const item of items) {
+    if (!String(item.imagen_thumb_url || "").trim() && String(item.imagen_url || "").startsWith("/public/img/")) {
+      item.imagen_thumb_url = await ensureThumbForLocalImage(item.nombre, item.imagen_url);
+    }
   }
 
   const existing = await db.MajorArcana.findAll({
@@ -581,7 +688,12 @@ async function importLocal(req, res) {
 
 async function list(req, res, next) {
   try {
-    const arcanos = await db.MajorArcana.findAll({ order: [["numero", "ASC"]], raw: true });
+    const arcanosRaw = await db.MajorArcana.findAll({ order: [["numero", "ASC"]], raw: true });
+    const arcanos = arcanosRaw.map((a) => {
+      const imagen_url_resolved = resolveImageUrl(a.nombre, a.imagen_url);
+      const imagen_thumb_url_resolved = resolveThumbUrl(a.nombre, a.imagen_thumb_url, imagen_url_resolved);
+      return { ...a, imagen_url_resolved, imagen_thumb_url_resolved };
+    });
     res.render("majorArcana/index", {
       title: "Arcanos Mayores",
       arcanos,
@@ -607,6 +719,7 @@ function showCreateForm(req, res) {
       descripcion_visual: "",
       palabras_clave: "",
       imagen_url: "",
+      imagen_thumb_url: "",
       planeta: "",
       numero_simbolismo: "",
       simbologia_mesa_elementos: "",
@@ -638,6 +751,14 @@ async function create(req, res, next) {
       });
     }
 
+    if (req.file?.buffer) {
+      const saved = await saveImageAndThumb({ nombre: payload.nombre, buffer: req.file.buffer });
+      payload.imagen_url = saved.imagen_url;
+      payload.imagen_thumb_url = saved.imagen_thumb_url;
+    } else if (payload.imagen_url && !payload.imagen_thumb_url) {
+      payload.imagen_thumb_url = await ensureThumbForLocalImage(payload.nombre, payload.imagen_url);
+    }
+
     await db.MajorArcana.create(payload);
 
     res.redirect("/arcanos");
@@ -661,7 +782,18 @@ async function show(req, res, next) {
   try {
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) return res.status(404).render("notFound", { title: "No encontrado" });
-    const arcano = await db.MajorArcana.findByPk(id, { raw: true });
+    const arcanoRaw = await db.MajorArcana.findByPk(id, { raw: true });
+    const arcano = arcanoRaw
+      ? {
+          ...arcanoRaw,
+          imagen_url_resolved: resolveImageUrl(arcanoRaw.nombre, arcanoRaw.imagen_url),
+          imagen_thumb_url_resolved: resolveThumbUrl(
+            arcanoRaw.nombre,
+            arcanoRaw.imagen_thumb_url,
+            resolveImageUrl(arcanoRaw.nombre, arcanoRaw.imagen_url)
+          )
+        }
+      : null;
     if (!arcano) return res.status(404).render("notFound", { title: "No encontrado" });
     res.render("majorArcana/show", { title: arcano.nombre, arcano });
   } catch (err) {
@@ -709,6 +841,20 @@ async function update(req, res, next) {
         arcano: { id, ...req.body },
         errors
       });
+    }
+
+    if (req.file?.buffer) {
+      const saved = await saveImageAndThumb({ nombre: payload.nombre, buffer: req.file.buffer });
+      payload.imagen_url = saved.imagen_url;
+      payload.imagen_thumb_url = saved.imagen_thumb_url;
+    } else {
+      const imageChanged = String(payload.imagen_url || "") !== String(existing.imagen_url || "");
+      const thumbMissing = !String(existing.imagen_thumb_url || "").trim();
+      if ((imageChanged || thumbMissing) && payload.imagen_url) {
+        payload.imagen_thumb_url = await ensureThumbForLocalImage(payload.nombre, payload.imagen_url);
+      } else {
+        delete payload.imagen_thumb_url;
+      }
     }
 
     await existingInstance.update(payload);
@@ -859,6 +1005,7 @@ async function exportJsonV2(req, res, next) {
           },
           visual_description: r.descripcion_visual,
           image_url: resolveImageUrl(r.nombre, r.imagen_url),
+          image_thumb_url: resolveThumbUrl(r.nombre, r.imagen_thumb_url, r.imagen_url),
           attributes: {
             element: String(attributesExtra.element || ""),
             astrology: String(attributesExtra.astrology || ""),
@@ -909,6 +1056,7 @@ function makeSelectedObject(fields) {
     "meanings_by_area",
     "visual_description",
     "image_url",
+    "image_thumb_url",
     "attributes",
     "extra"
   ];
@@ -949,6 +1097,7 @@ function buildExportPayload(rows, version, fields) {
   const includeMeaningsByArea = fields?.has("meanings_by_area");
   const includeVisual = fields?.has("visual_description");
   const includeImage = fields?.has("image_url");
+  const includeImageThumb = fields?.has("image_thumb_url");
   const includeAttributes = fields?.has("attributes");
   const includeExtra = fields?.has("extra");
 
@@ -1026,6 +1175,7 @@ function buildExportPayload(rows, version, fields) {
 
       if (includeVisual) out.visual_description = r.descripcion_visual;
       if (includeImage) out.image_url = resolveImageUrl(r.nombre, r.imagen_url);
+      if (includeImageThumb) out.image_thumb_url = resolveThumbUrl(r.nombre, r.imagen_thumb_url, r.imagen_url);
 
       if (includeAttributes) {
         out.attributes =
@@ -1058,6 +1208,7 @@ async function showExportBuilder(req, res, next) {
       "meanings_by_area",
       "visual_description",
       "image_url",
+      "image_thumb_url",
       "attributes",
       "extra"
     ]);

@@ -47,6 +47,11 @@ module.exports = function defineMajorArcana(sequelize, DataTypes) {
         allowNull: false,
         defaultValue: ""
       },
+      imagen_thumb_url: {
+        type: DataTypes.TEXT,
+        allowNull: false,
+        defaultValue: ""
+      },
       planeta: {
         type: DataTypes.TEXT,
         allowNull: false,

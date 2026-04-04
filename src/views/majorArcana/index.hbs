@@ -16,6 +16,7 @@
         <thead>
           <tr>
             <th style="width: 92px;">Número</th>
+            <th style="width: 88px;">Thumb</th>
             <th>Nombre</th>
             <th style="width: 220px;">Palabras clave</th>
             <th style="width: 220px;" class="text-end">Acciones</th>
@@ -24,7 +25,7 @@
         <tbody>
           {{#unless hasArcanos}}
             <tr>
-              <td colspan="4" class="py-4">
+              <td colspan="5" class="py-4">
                 <div class="muted">Aún no hay arcanos. Crea el primero.</div>
               </td>
             </tr>
@@ -33,6 +34,17 @@
           {{#each arcanos}}
             <tr>
               <td><span class="badge badge-mystic text-dark">{{numero}}</span></td>
+              <td>
+                {{#if imagen_thumb_url_resolved}}
+                  <img src="{{imagen_thumb_url_resolved}}" alt="{{nombre}}" class="rounded border border-secondary" style="width:64px;height:64px;object-fit:cover;" loading="lazy" />
+                {{else}}
+                  {{#if imagen_url_resolved}}
+                    <img src="{{imagen_url_resolved}}" alt="{{nombre}}" class="rounded border border-secondary" style="width:64px;height:64px;object-fit:cover;" loading="lazy" />
+                  {{else}}
+                    <div class="muted">—</div>
+                  {{/if}}
+                {{/if}}
+              </td>
               <td>
                 <a class="fw-semibold text-info" href="/arcanos/{{id}}">{{nombre}}</a>
               </td>

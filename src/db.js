@@ -57,6 +57,7 @@ async function initDb() {
 
   await sequelize.query(`
     ALTER TABLE IF EXISTS "MajorArcana"
+    ADD COLUMN IF NOT EXISTS imagen_thumb_url TEXT NOT NULL DEFAULT '',
     ADD COLUMN IF NOT EXISTS planeta TEXT NOT NULL DEFAULT '',
     ADD COLUMN IF NOT EXISTS numero_simbolismo TEXT NOT NULL DEFAULT '',
     ADD COLUMN IF NOT EXISTS simbologia_mesa_elementos TEXT NOT NULL DEFAULT '',

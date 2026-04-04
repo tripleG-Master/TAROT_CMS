@@ -20,11 +20,18 @@
     <div class="col-lg-4">
       <div class="card p-3">
         <div class="fw-semibold mb-2">Imagen</div>
-        {{#if arcano.imagen_url}}
-          <img src="{{arcano.imagen_url}}" alt="{{arcano.nombre}}" class="img-fluid rounded border border-secondary" />
-          <div class="mt-2 text-truncate"><a href="{{arcano.imagen_url}}" target="_blank" rel="noreferrer" class="text-info">{{arcano.imagen_url}}</a></div>
+        {{#if arcano.imagen_thumb_url_resolved}}
+          <img src="{{arcano.imagen_thumb_url_resolved}}" alt="{{arcano.nombre}}" class="img-fluid rounded border border-secondary" />
+          {{#if arcano.imagen_url_resolved}}
+            <div class="mt-2 text-truncate"><a href="{{arcano.imagen_url_resolved}}" target="_blank" rel="noreferrer" class="text-info">Abrir imagen full</a></div>
+          {{/if}}
         {{else}}
-          <div class="muted">Sin URL de imagen.</div>
+          {{#if arcano.imagen_url_resolved}}
+            <img src="{{arcano.imagen_url_resolved}}" alt="{{arcano.nombre}}" class="img-fluid rounded border border-secondary" />
+            <div class="mt-2 text-truncate"><a href="{{arcano.imagen_url_resolved}}" target="_blank" rel="noreferrer" class="text-info">{{arcano.imagen_url_resolved}}</a></div>
+          {{else}}
+            <div class="muted">Sin URL de imagen.</div>
+          {{/if}}
         {{/if}}
       </div>
     </div>
