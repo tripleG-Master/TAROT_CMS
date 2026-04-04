@@ -45,9 +45,17 @@ function slugifyDash(input) {
     .replace(/^-+|-+$/g, "");
 }
 
-function resolveImageUrl(nombre, imagenUrl) {
+function resolveImageUrl(numero, nombre, imagenUrl) {
   const current = cleanText(imagenUrl);
   if (current) return current;
+
+  if (Number.isInteger(numero)) {
+    const n = String(numero);
+    const candidates = [`${n}.jpg`, `${n}.jpeg`, `${n}.png`, `${n}.webp`];
+    const existing = candidates.find((f) => fs.existsSync(path.join(imgDir, f)));
+    const fileName = existing || candidates[0];
+    return `/public/img/${fileName}`;
+  }
 
   let base = slugifyDash(nombre);
   base = imageAliases[base] || base;
@@ -64,9 +72,22 @@ function resolveImageUrl(nombre, imagenUrl) {
   return `/public/img/${fileName}`;
 }
 
-function resolveThumbUrl(nombre, imagenThumbUrl, imagenUrl) {
+function resolveThumbUrl(numero, nombre, imagenThumbUrl, imagenUrl) {
   const current = cleanText(imagenThumbUrl);
   if (current) return current;
+
+  if (Number.isInteger(numero)) {
+    const n = String(numero);
+    const candidates = [
+      `${n}.thumb.webp`,
+      `${n}.thumb.jpg`,
+      `${n}.thumb.jpeg`,
+      `${n}.thumb.png`
+    ];
+    const existing = candidates.find((f) => fs.existsSync(path.join(thumbDir, f)));
+    if (existing) return `/public/img/thumbs/${existing}`;
+    return "";
+  }
 
   const image = cleanText(imagenUrl);
   if (image) {
@@ -121,9 +142,9 @@ async function writeThumbFromFilePath(inputPath, thumbPath) {
     .toFile(thumbPath);
 }
 
-async function saveImageAndThumb({ nombre, buffer }) {
+async function saveImageAndThumb({ numero, nombre, buffer }) {
   ensureDirs();
-  let base = slugifyDash(nombre);
+  let base = Number.isInteger(numero) ? String(numero) : slugifyDash(nombre);
   base = imageAliases[base] || base;
 
   const imageFile = `${base}.webp`;
@@ -141,12 +162,12 @@ async function saveImageAndThumb({ nombre, buffer }) {
   };
 }
 
-async function ensureThumbForLocalImage(nombre, imagenUrl) {
+async function ensureThumbForLocalImage(numero, nombre, imagenUrl) {
   const localPath = localPublicImgPath(imagenUrl);
   if (!localPath || !fs.existsSync(localPath)) return "";
   ensureDirs();
 
-  let base = slugifyDash(nombre);
+  let base = Number.isInteger(numero) ? String(numero) : slugifyDash(nombre);
   base = imageAliases[base] || base;
   const thumbFile = `${base}.thumb.webp`;
   const thumbPath = path.join(thumbDir, thumbFile);
@@ -260,10 +281,12 @@ function mapImportRow(raw) {
     : normalizeKeywords(cleanText(palabrasClaveRaw));
 
   const imagen_url = resolveImageUrl(
+    numero,
     nombre,
     normalized.imagen_url ?? normalized.image_url ?? raw?.imagen_url ?? raw?.image_url
   );
   const imagen_thumb_url = resolveThumbUrl(
+    numero,
     nombre,
     normalized.imagen_thumb_url ?? normalized.image_thumb_url ?? raw?.imagen_thumb_url ?? raw?.image_thumb_url,
     imagen_url
@@ -426,7 +449,7 @@ async function performImport(rows) {
 
   for (const item of items) {
     if (!String(item.imagen_thumb_url || "").trim() && String(item.imagen_url || "").startsWith("/public/img/")) {
-      item.imagen_thumb_url = await ensureThumbForLocalImage(item.nombre, item.imagen_url);
+      item.imagen_thumb_url = await ensureThumbForLocalImage(item.numero, item.nombre, item.imagen_url);
     }
   }
 
@@ -689,11 +712,15 @@ async function importLocal(req, res) {
 async function list(req, res, next) {
   try {
     const arcanosRaw = await db.MajorArcana.findAll({ order: [["numero", "ASC"]], raw: true });
-    const arcanos = arcanosRaw.map((a) => {
-      const imagen_url_resolved = resolveImageUrl(a.nombre, a.imagen_url);
-      const imagen_thumb_url_resolved = resolveThumbUrl(a.nombre, a.imagen_thumb_url, imagen_url_resolved);
-      return { ...a, imagen_url_resolved, imagen_thumb_url_resolved };
-    });
+    const arcanos = [];
+    for (const a of arcanosRaw) {
+      const imagen_url_resolved = resolveImageUrl(a.numero, a.nombre, a.imagen_url);
+      let imagen_thumb_url_resolved = resolveThumbUrl(a.numero, a.nombre, a.imagen_thumb_url, imagen_url_resolved);
+      if (!imagen_thumb_url_resolved && String(imagen_url_resolved).startsWith("/public/img/")) {
+        imagen_thumb_url_resolved = await ensureThumbForLocalImage(a.numero, a.nombre, imagen_url_resolved);
+      }
+      arcanos.push({ ...a, imagen_url_resolved, imagen_thumb_url_resolved });
+    }
     res.render("majorArcana/index", {
       title: "Arcanos Mayores",
       arcanos,
@@ -752,11 +779,11 @@ async function create(req, res, next) {
     }
 
     if (req.file?.buffer) {
-      const saved = await saveImageAndThumb({ nombre: payload.nombre, buffer: req.file.buffer });
+      const saved = await saveImageAndThumb({ numero: payload.numero, nombre: payload.nombre, buffer: req.file.buffer });
       payload.imagen_url = saved.imagen_url;
       payload.imagen_thumb_url = saved.imagen_thumb_url;
     } else if (payload.imagen_url && !payload.imagen_thumb_url) {
-      payload.imagen_thumb_url = await ensureThumbForLocalImage(payload.nombre, payload.imagen_url);
+      payload.imagen_thumb_url = await ensureThumbForLocalImage(payload.numero, payload.nombre, payload.imagen_url);
     }
 
     await db.MajorArcana.create(payload);
@@ -783,17 +810,20 @@ async function show(req, res, next) {
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) return res.status(404).render("notFound", { title: "No encontrado" });
     const arcanoRaw = await db.MajorArcana.findByPk(id, { raw: true });
-    const arcano = arcanoRaw
-      ? {
-          ...arcanoRaw,
-          imagen_url_resolved: resolveImageUrl(arcanoRaw.nombre, arcanoRaw.imagen_url),
-          imagen_thumb_url_resolved: resolveThumbUrl(
-            arcanoRaw.nombre,
-            arcanoRaw.imagen_thumb_url,
-            resolveImageUrl(arcanoRaw.nombre, arcanoRaw.imagen_url)
-          )
-        }
-      : null;
+    let arcano = null;
+    if (arcanoRaw) {
+      const imagen_url_resolved = resolveImageUrl(arcanoRaw.numero, arcanoRaw.nombre, arcanoRaw.imagen_url);
+      let imagen_thumb_url_resolved = resolveThumbUrl(
+        arcanoRaw.numero,
+        arcanoRaw.nombre,
+        arcanoRaw.imagen_thumb_url,
+        imagen_url_resolved
+      );
+      if (!imagen_thumb_url_resolved && String(imagen_url_resolved).startsWith("/public/img/")) {
+        imagen_thumb_url_resolved = await ensureThumbForLocalImage(arcanoRaw.numero, arcanoRaw.nombre, imagen_url_resolved);
+      }
+      arcano = { ...arcanoRaw, imagen_url_resolved, imagen_thumb_url_resolved };
+    }
     if (!arcano) return res.status(404).render("notFound", { title: "No encontrado" });
     res.render("majorArcana/show", { title: arcano.nombre, arcano });
   } catch (err) {
@@ -844,14 +874,14 @@ async function update(req, res, next) {
     }
 
     if (req.file?.buffer) {
-      const saved = await saveImageAndThumb({ nombre: payload.nombre, buffer: req.file.buffer });
+      const saved = await saveImageAndThumb({ numero: payload.numero, nombre: payload.nombre, buffer: req.file.buffer });
       payload.imagen_url = saved.imagen_url;
       payload.imagen_thumb_url = saved.imagen_thumb_url;
     } else {
       const imageChanged = String(payload.imagen_url || "") !== String(existing.imagen_url || "");
       const thumbMissing = !String(existing.imagen_thumb_url || "").trim();
       if ((imageChanged || thumbMissing) && payload.imagen_url) {
-        payload.imagen_thumb_url = await ensureThumbForLocalImage(payload.nombre, payload.imagen_url);
+        payload.imagen_thumb_url = await ensureThumbForLocalImage(payload.numero, payload.nombre, payload.imagen_url);
       } else {
         delete payload.imagen_thumb_url;
       }
@@ -923,7 +953,7 @@ async function exportJson(req, res, next) {
           }
         },
         visual_description: r.descripcion_visual,
-        image_url: resolveImageUrl(r.nombre, r.imagen_url),
+        image_url: resolveImageUrl(r.numero, r.nombre, r.imagen_url),
         attributes: {
           element: "",
           astrology: "",
@@ -1004,8 +1034,8 @@ async function exportJsonV2(req, res, next) {
             }
           },
           visual_description: r.descripcion_visual,
-          image_url: resolveImageUrl(r.nombre, r.imagen_url),
-          image_thumb_url: resolveThumbUrl(r.nombre, r.imagen_thumb_url, r.imagen_url),
+          image_url: resolveImageUrl(r.numero, r.nombre, r.imagen_url),
+          image_thumb_url: resolveThumbUrl(r.numero, r.nombre, r.imagen_thumb_url, r.imagen_url),
           attributes: {
             element: String(attributesExtra.element || ""),
             astrology: String(attributesExtra.astrology || ""),
@@ -1174,8 +1204,8 @@ function buildExportPayload(rows, version, fields) {
       }
 
       if (includeVisual) out.visual_description = r.descripcion_visual;
-      if (includeImage) out.image_url = resolveImageUrl(r.nombre, r.imagen_url);
-      if (includeImageThumb) out.image_thumb_url = resolveThumbUrl(r.nombre, r.imagen_thumb_url, r.imagen_url);
+      if (includeImage) out.image_url = resolveImageUrl(r.numero, r.nombre, r.imagen_url);
+      if (includeImageThumb) out.image_thumb_url = resolveThumbUrl(r.numero, r.nombre, r.imagen_thumb_url, r.imagen_url);
 
       if (includeAttributes) {
         out.attributes =
