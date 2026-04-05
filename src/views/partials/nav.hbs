@@ -11,9 +11,19 @@
         </li>
       </ul>
       <div class="d-flex gap-2">
+        <a class="btn btn-outline-light" href="/tarot/calculo">Cálculo</a>
         <a class="btn btn-outline-light" href="/arcanos/import">Importar</a>
-        <a class="btn btn-outline-secondary" href="/arcanos/export/builder">Export Builder</a>
-        <a class="btn btn-outline-info" href="/arcanos/export/arcanos.json">Exportar JSON</a>
+        <div class="btn-group">
+          <button type="button" class="btn btn-outline-info dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+            Exportar JSON
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="/arcanos/export/arcanos.json">V1 (arcanos.json)</a></li>
+            <li><a class="dropdown-item" href="/arcanos/export/v2/arcanos.json">V2 (arcanos.v2.json)</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="/arcanos/export/builder">Custom (Builder)</a></li>
+          </ul>
+        </div>
         <a class="btn btn-mystic text-dark fw-semibold" href="/arcanos/new">Nuevo</a>
       </div>
     </div>

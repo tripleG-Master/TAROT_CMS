@@ -1,0 +1,84 @@
+<main class="container py-4">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+      <h1 class="h3 brand mb-1">Cálculo</h1>
+      <div class="muted">Calcula el signo zodiacal consumiendo el endpoint del CMS.</div>
+    </div>
+    <a class="btn btn-outline-light" href="/arcanos">Volver</a>
+  </div>
+
+  <div class="card p-4">
+    <form id="zodiacForm" class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label">Fecha de nacimiento</label>
+        <input id="birthdate" name="birthdate" type="date" class="form-control" required />
+      </div>
+      <div class="col-md-6 d-flex align-items-end">
+        <button class="btn btn-mystic text-dark fw-semibold w-100" type="submit">Calcular signo</button>
+      </div>
+    </form>
+
+    <hr class="border-secondary my-3" />
+
+    <div id="zodiacResult" class="d-none">
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div class="fw-semibold">Resultado</div>
+        <div class="muted">GET /zodiac?birthdate=YYYY-MM-DD</div>
+      </div>
+      <div class="mt-2">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <span class="badge badge-mystic text-dark" id="signKey"></span>
+          <span class="brand h5 mb-0" id="signName"></span>
+        </div>
+        <div class="muted mt-2">Fecha normalizada: <span id="birthdateNormalized"></span></div>
+      </div>
+    </div>
+
+    <div id="zodiacError" class="alert alert-danger d-none mt-3"></div>
+  </div>
+</main>
+
+<script>
+  (function () {
+    const form = document.getElementById("zodiacForm");
+    const input = document.getElementById("birthdate");
+    const result = document.getElementById("zodiacResult");
+    const error = document.getElementById("zodiacError");
+    const signKey = document.getElementById("signKey");
+    const signName = document.getElementById("signName");
+    const birthdateNormalized = document.getElementById("birthdateNormalized");
+
+    function showError(message) {
+      error.textContent = message || "Error inesperado";
+      error.classList.remove("d-none");
+      result.classList.add("d-none");
+    }
+
+    function showResult(data) {
+      signKey.textContent = data.sign.key;
+      signName.textContent = data.sign.name_es;
+      birthdateNormalized.textContent = data.birthdate;
+      result.classList.remove("d-none");
+      error.classList.add("d-none");
+    }
+
+    form.addEventListener("submit", async function (e) {
+      e.preventDefault();
+      const birthdate = input.value;
+      if (!birthdate) return;
+
+      try {
+        const url = "/zodiac?birthdate=" + encodeURIComponent(birthdate);
+        const res = await fetch(url, { headers: { "Accept": "application/json" } });
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data || data.ok !== true) {
+          showError((data && data.error) || ("HTTP " + res.status));
+          return;
+        }
+        showResult(data);
+      } catch (err) {
+        showError(err && err.message ? err.message : "Error de red");
+      }
+    });
+  })();
+</script>

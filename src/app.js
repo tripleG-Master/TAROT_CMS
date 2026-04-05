@@ -6,6 +6,11 @@ const morgan = require("morgan");
 
 
 const majorArcanaRoutes = require("./routes/majorArcanaRoutes");
+const zodiacRoutes = require("./routes/zodiacRoutes");
+const tarotRoutes = require("./routes/tarotRoutes");
+const apiRoutes = require("./routes/apiRoutes");
+const { requireApiToken } = require("./middleware/apiAuth");
+const healthRoutes = require("./routes/healthRoutes");
 
 function createApp() {
   const app = express();
@@ -33,8 +38,13 @@ function createApp() {
 
   app.use(morgan("dev"));
 
+  app.use("/health", healthRoutes);
+
   app.get("/", (req, res) => res.redirect("/arcanos"));
   app.use("/arcanos", majorArcanaRoutes);
+  app.use("/zodiac", zodiacRoutes);
+  app.use("/tarot", tarotRoutes);
+  app.use("/api", requireApiToken, apiRoutes);
 
 
   app.use((req, res) => {
