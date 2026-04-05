@@ -2,51 +2,101 @@
   <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
     <div>
       <h1 class="h3 brand mb-1">Cálculo</h1>
-      <div class="muted">Calcula el signo zodiacal consumiendo el endpoint del CMS.</div>
+      <div class="muted">Prueba zodiaco, numerología y arcano de nacimiento consumiendo el endpoint del CMS.</div>
     </div>
     <a class="btn btn-outline-light" href="/arcanos">Volver</a>
   </div>
 
   <div class="card p-4">
-    <form id="zodiacForm" class="row g-3">
+    <form id="registerForm" class="row g-3">
+      <div class="col-md-4">
+        <label class="form-label">Nombre</label>
+        <input id="name" name="name" type="text" class="form-control" placeholder="Tu nombre" />
+      </div>
       <div class="col-md-6">
         <label class="form-label">Fecha de nacimiento</label>
         <input id="birthdate" name="birthdate" type="date" class="form-control" required />
       </div>
-      <div class="col-md-6 d-flex align-items-end">
-        <button class="btn btn-mystic text-dark fw-semibold w-100" type="submit">Calcular signo</button>
+      <div class="col-md-2">
+        <label class="form-label">API Token</label>
+        <input id="apiToken" name="apiToken" type="password" class="form-control" placeholder="Bearer..." />
+      </div>
+      <div class="col-md-12 d-flex align-items-end">
+        <button class="btn btn-mystic text-dark fw-semibold w-100" type="submit">Calcular perfil</button>
       </div>
     </form>
 
     <hr class="border-secondary my-3" />
 
-    <div id="zodiacResult" class="d-none">
+    <div id="calcResult" class="d-none">
       <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
         <div class="fw-semibold">Resultado</div>
-        <div class="muted">GET /zodiac?birthdate=YYYY-MM-DD</div>
+        <div class="muted">POST /api/register</div>
       </div>
-      <div class="mt-2">
-        <div class="d-flex align-items-center gap-2 flex-wrap">
-          <span class="badge badge-mystic text-dark" id="signKey"></span>
-          <span class="brand h5 mb-0" id="signName"></span>
+
+      <div class="row g-3 mt-1">
+        <div class="col-md-6">
+          <div class="fw-semibold mb-1">Zodiaco</div>
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <span class="badge badge-mystic text-dark" id="zodiacKey"></span>
+            <span class="brand h5 mb-0" id="zodiacName"></span>
+          </div>
+          <div class="muted mt-2">Fecha normalizada: <span id="birthdateNormalized"></span></div>
         </div>
-        <div class="muted mt-2">Fecha normalizada: <span id="birthdateNormalized"></span></div>
+
+        <div class="col-md-6">
+          <div class="fw-semibold mb-1">Numerología</div>
+          <div class="muted">Número de vida: <span class="brand" id="lifePathValue"></span> <span id="lifePathBadge"></span></div>
+        </div>
+
+        <div class="col-12">
+          <div class="fw-semibold mb-2">Arcano de nacimiento</div>
+          <div class="row g-3 align-items-center">
+            <div class="col-auto">
+              <img id="arcanoThumb" alt="Arcano" class="rounded border border-secondary" style="width:96px;height:96px;object-fit:cover;display:none;" />
+            </div>
+            <div class="col">
+              <div class="muted">Arcano (0–21): <span class="brand" id="arcanoNumero"></span></div>
+              <div class="brand h5 mb-0" id="arcanoNombre"></div>
+              <div class="muted">Arcana 22: <span id="arcano22"></span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12">
+          <div class="fw-semibold mb-2">Respuesta JSON</div>
+          <textarea id="rawJson" class="form-control" rows="10" spellcheck="false" readonly></textarea>
+        </div>
       </div>
     </div>
 
-    <div id="zodiacError" class="alert alert-danger d-none mt-3"></div>
+    <div id="calcError" class="alert alert-danger d-none mt-3"></div>
   </div>
 </main>
 
 <script>
   (function () {
-    const form = document.getElementById("zodiacForm");
-    const input = document.getElementById("birthdate");
-    const result = document.getElementById("zodiacResult");
-    const error = document.getElementById("zodiacError");
-    const signKey = document.getElementById("signKey");
-    const signName = document.getElementById("signName");
+    const form = document.getElementById("registerForm");
+    const nameInput = document.getElementById("name");
+    const birthdateInput = document.getElementById("birthdate");
+    const tokenInput = document.getElementById("apiToken");
+
+    const result = document.getElementById("calcResult");
+    const error = document.getElementById("calcError");
+
+    const zodiacKey = document.getElementById("zodiacKey");
+    const zodiacName = document.getElementById("zodiacName");
     const birthdateNormalized = document.getElementById("birthdateNormalized");
+    const lifePathValue = document.getElementById("lifePathValue");
+    const lifePathBadge = document.getElementById("lifePathBadge");
+    const arcanoThumb = document.getElementById("arcanoThumb");
+    const arcanoNumero = document.getElementById("arcanoNumero");
+    const arcanoNombre = document.getElementById("arcanoNombre");
+    const arcano22 = document.getElementById("arcano22");
+    const rawJson = document.getElementById("rawJson");
+
+    const storedToken = localStorage.getItem("tarotCmsApiToken") || "";
+    if (storedToken) tokenInput.value = storedToken;
 
     function showError(message) {
       error.textContent = message || "Error inesperado";
@@ -55,22 +105,56 @@
     }
 
     function showResult(data) {
-      signKey.textContent = data.sign.key;
-      signName.textContent = data.sign.name_es;
-      birthdateNormalized.textContent = data.birthdate;
+      const zodiac = data.zodiac || data.sign || null;
+      zodiacKey.textContent = zodiac ? zodiac.key : "";
+      zodiacName.textContent = zodiac ? zodiac.name_es : "";
+      birthdateNormalized.textContent = data.user && data.user.birthdate ? data.user.birthdate : (data.birthdate || "");
+
+      const lp = data.numerology && data.numerology.life_path ? data.numerology.life_path : null;
+      lifePathValue.textContent = lp ? String(lp.value) : "";
+      lifePathBadge.textContent = lp && lp.is_master ? "(maestro)" : "";
+
+      const ba = data.birth_arcana || null;
+      arcanoNumero.textContent = ba ? String(ba.major_arcana_numero) : "";
+      arcanoNombre.textContent = ba && ba.arcano ? String(ba.arcano.nombre || "") : "";
+      arcano22.textContent = ba ? String(ba.arcana_22) : "";
+
+      const thumbUrl = ba && ba.arcano ? (ba.arcano.imagen_thumb_url || ba.arcano.imagen_url || "") : "";
+      if (thumbUrl) {
+        arcanoThumb.src = thumbUrl;
+        arcanoThumb.style.display = "block";
+      } else {
+        arcanoThumb.removeAttribute("src");
+        arcanoThumb.style.display = "none";
+      }
+
+      rawJson.value = JSON.stringify(data, null, 2);
       result.classList.remove("d-none");
       error.classList.add("d-none");
     }
 
     form.addEventListener("submit", async function (e) {
       e.preventDefault();
-      const birthdate = input.value;
+      const birthdate = birthdateInput.value;
+      const name = nameInput.value || "";
+      const token = tokenInput.value || "";
       if (!birthdate) return;
 
       try {
-        const url = "/zodiac?birthdate=" + encodeURIComponent(birthdate);
-        const res = await fetch(url, { headers: { "Accept": "application/json" } });
+        localStorage.setItem("tarotCmsApiToken", token);
+        const headers = { "Accept": "application/json", "Content-Type": "application/json" };
+        if (token) headers["Authorization"] = "Bearer " + token;
+
+        const res = await fetch("/api/register", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ name, birthdate })
+        });
         const data = await res.json().catch(() => null);
+        if (res.status === 401) {
+          showError("Unauthorized. Define API_TOKEN en el server y pega el token aquí para probar /api.");
+          return;
+        }
         if (!res.ok || !data || data.ok !== true) {
           showError((data && data.error) || ("HTTP " + res.status));
           return;
