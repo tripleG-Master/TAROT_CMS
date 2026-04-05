@@ -35,8 +35,11 @@ async function register(req, res) {
       life_path: lifePath
     },
     birth_arcana: {
+      total: birthArcana.total,
       major_arcana_numero: birthArcana.major_arcana_numero,
       arcana_22: birthArcana.arcana_22,
+      is_master: birthArcana.is_master,
+      steps: birthArcana.steps,
       arcano: arcano
         ? {
             numero: arcano.numero,

@@ -47,6 +47,8 @@
         <div class="col-md-6">
           <div class="fw-semibold mb-1">Numerología</div>
           <div class="muted">Número de vida: <span class="brand" id="lifePathValue"></span> <span id="lifePathBadge"></span></div>
+          <div class="muted mt-1">Suma inicial: <span id="lifePathTotal"></span></div>
+          <div class="muted mt-1">Reducción: <span id="lifePathSteps"></span></div>
         </div>
 
         <div class="col-12">
@@ -59,6 +61,8 @@
               <div class="muted">Arcano (0–21): <span class="brand" id="arcanoNumero"></span></div>
               <div class="brand h5 mb-0" id="arcanoNombre"></div>
               <div class="muted">Arcana 22: <span id="arcano22"></span></div>
+              <div class="muted">Suma inicial: <span id="arcanoTotal"></span> <span id="arcanoMaster"></span></div>
+              <div class="muted mt-1">Reducción: <span id="arcanoSteps"></span></div>
             </div>
           </div>
         </div>
@@ -89,10 +93,15 @@
     const birthdateNormalized = document.getElementById("birthdateNormalized");
     const lifePathValue = document.getElementById("lifePathValue");
     const lifePathBadge = document.getElementById("lifePathBadge");
+    const lifePathTotal = document.getElementById("lifePathTotal");
+    const lifePathSteps = document.getElementById("lifePathSteps");
     const arcanoThumb = document.getElementById("arcanoThumb");
     const arcanoNumero = document.getElementById("arcanoNumero");
     const arcanoNombre = document.getElementById("arcanoNombre");
     const arcano22 = document.getElementById("arcano22");
+    const arcanoTotal = document.getElementById("arcanoTotal");
+    const arcanoSteps = document.getElementById("arcanoSteps");
+    const arcanoMaster = document.getElementById("arcanoMaster");
     const rawJson = document.getElementById("rawJson");
 
     const storedToken = localStorage.getItem("tarotCmsApiToken") || "";
@@ -113,11 +122,24 @@
       const lp = data.numerology && data.numerology.life_path ? data.numerology.life_path : null;
       lifePathValue.textContent = lp ? String(lp.value) : "";
       lifePathBadge.textContent = lp && lp.is_master ? "(maestro)" : "";
+      lifePathTotal.textContent = lp && typeof lp.total === "number" ? String(lp.total) : "";
+      if (lp && Array.isArray(lp.steps) && lp.steps.length > 0) {
+        lifePathSteps.textContent = lp.steps.map((s) => String(s.from) + "→" + String(s.to)).join(" , ");
+      } else {
+        lifePathSteps.textContent = "—";
+      }
 
       const ba = data.birth_arcana || null;
       arcanoNumero.textContent = ba ? String(ba.major_arcana_numero) : "";
       arcanoNombre.textContent = ba && ba.arcano ? String(ba.arcano.nombre || "") : "";
       arcano22.textContent = ba ? String(ba.arcana_22) : "";
+      arcanoTotal.textContent = ba && typeof ba.total === "number" ? String(ba.total) : "";
+      arcanoMaster.textContent = ba && ba.is_master ? "(maestro)" : "";
+      if (ba && Array.isArray(ba.steps) && ba.steps.length > 0) {
+        arcanoSteps.textContent = ba.steps.map((s) => String(s.from) + "→" + String(s.to)).join(" , ");
+      } else {
+        arcanoSteps.textContent = "—";
+      }
 
       const thumbUrl = ba && ba.arcano ? (ba.arcano.imagen_thumb_url || ba.arcano.imagen_url || "") : "";
       if (thumbUrl) {

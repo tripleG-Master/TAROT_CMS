@@ -10,19 +10,48 @@ function sumDigits(n) {
   return sum;
 }
 
-function reduceToDigitOrMaster(n) {
+function reduceToTarotRangeOrMaster(n, options = {}) {
+  const stopAt33 = options.stopAt33 === true;
   let x = Math.abs(Number(n) || 0);
-  while (x > 9 && !MASTER_NUMBERS.has(x)) {
-    x = sumDigits(x);
+  while (x > 22) {
+    const next = sumDigits(x);
+    if (MASTER_NUMBERS.has(next)) {
+      if (next === 33 && stopAt33) return next;
+      if (next === 22) return next;
+      if (next === 11) return next;
+    }
+    x = next;
   }
   return x;
+}
+
+function reduceToTarotRangeOrMasterWithSteps(n, options = {}) {
+  const stopAt33 = options.stopAt33 === true;
+  let x = Math.abs(Number(n) || 0);
+  const steps = [];
+
+  while (x > 22) {
+    const next = sumDigits(x);
+    steps.push({ from: x, to: next });
+
+    if (MASTER_NUMBERS.has(next)) {
+      if (next === 33 && stopAt33) return { value: next, steps };
+      if (next === 22) return { value: next, steps };
+      if (next === 11) return { value: next, steps };
+    }
+
+    x = next;
+  }
+
+  return { value: x, steps };
 }
 
 function lifePathNumber({ year, month, day }) {
   const digits = `${String(year).padStart(4, "0")}${String(month).padStart(2, "0")}${String(day).padStart(2, "0")}`;
   const total = digits.split("").reduce((acc, ch) => acc + Number(ch), 0);
-  const value = reduceToDigitOrMaster(total);
-  return { value, is_master: MASTER_NUMBERS.has(value) };
+  const reduced = reduceToTarotRangeOrMasterWithSteps(total, { stopAt33: true });
+  const value = reduced.value;
+  return { total, value, is_master: MASTER_NUMBERS.has(value), steps: reduced.steps };
 }
 
 function reduceToArcanaNumber(n) {
@@ -35,9 +64,16 @@ function reduceToArcanaNumber(n) {
 function birthArcanaFromBirthdate({ year, month, day }) {
   const digits = `${String(year).padStart(4, "0")}${String(month).padStart(2, "0")}${String(day).padStart(2, "0")}`;
   const total = digits.split("").reduce((acc, ch) => acc + Number(ch), 0);
-  const arcana22 = reduceToArcanaNumber(total);
+  const reduced = reduceToTarotRangeOrMasterWithSteps(total, { stopAt33: false });
+  const arcana22 = reduced.value;
   const majorArcanaNumero = arcana22 === 22 ? 0 : arcana22;
-  return { arcana_22: arcana22, major_arcana_numero: majorArcanaNumero };
+  return {
+    total,
+    arcana_22: arcana22,
+    major_arcana_numero: majorArcanaNumero,
+    is_master: arcana22 === 11 || arcana22 === 22,
+    steps: reduced.steps
+  };
 }
 
 module.exports = { lifePathNumber, birthArcanaFromBirthdate };
