@@ -1,0 +1,66 @@
+<main class="container py-4">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+      <h1 class="h3 brand mb-1">Conectores</h1>
+      <div class="muted">Filtra por tipo/polaridad y revisa el texto con placeholders.</div>
+    </div>
+    <a class="btn btn-outline-light" href="/tarot/lectura">Volver a Lectura</a>
+  </div>
+
+  <div class="card p-4">
+    <form method="GET" action="/tarot/conectores" class="row g-3">
+      <div class="col-md-4">
+        <label class="form-label">Tipo</label>
+        <select name="tipo" class="form-select">
+          <option value="" {{#unless filters.tipo}}selected{{/unless}}>Todos</option>
+          <option value="pasado_presente" {{#if (eq filters.tipo "pasado_presente")}}selected{{/if}}>pasado_presente</option>
+          <option value="presente_futuro" {{#if (eq filters.tipo "presente_futuro")}}selected{{/if}}>presente_futuro</option>
+          <option value="introduccion" {{#if (eq filters.tipo "introduccion")}}selected{{/if}}>introduccion</option>
+          <option value="cierre" {{#if (eq filters.tipo "cierre")}}selected{{/if}}>cierre</option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Polaridad</label>
+        <select name="polaridad" class="form-select">
+          <option value="" {{#unless filters.polaridad}}selected{{/unless}}>Todos</option>
+          <option value="positivo_positivo" {{#if (eq filters.polaridad "positivo_positivo")}}selected{{/if}}>positivo_positivo</option>
+          <option value="positivo_negativo" {{#if (eq filters.polaridad "positivo_negativo")}}selected{{/if}}>positivo_negativo</option>
+          <option value="negativo_positivo" {{#if (eq filters.polaridad "negativo_positivo")}}selected{{/if}}>negativo_positivo</option>
+          <option value="negativo_negativo" {{#if (eq filters.polaridad "negativo_negativo")}}selected{{/if}}>negativo_negativo</option>
+          <option value="neutro" {{#if (eq filters.polaridad "neutro")}}selected{{/if}}>neutro</option>
+        </select>
+      </div>
+      <div class="col-md-4 d-flex align-items-end">
+        <button class="btn btn-mystic text-dark fw-semibold w-100" type="submit">Filtrar</button>
+      </div>
+    </form>
+
+    <hr class="border-secondary my-3" />
+
+    <div class="table-responsive">
+      <table class="table table-striped align-middle mb-0">
+        <thead>
+          <tr>
+            <th style="width: 160px;">Tipo</th>
+            <th style="width: 180px;">Polaridad</th>
+            <th>Texto</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each rows}}
+            <tr>
+              <td><span class="badge bg-secondary">{{tipo}}</span></td>
+              <td><span class="badge bg-dark">{{polaridad}}</span></td>
+              <td style="white-space: pre-wrap;">{{texto}}</td>
+            </tr>
+          {{/each}}
+          {{#unless rows}}
+            <tr>
+              <td colspan="3" class="py-4"><div class="muted">No hay conectores con estos filtros.</div></td>
+            </tr>
+          {{/unless}}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>

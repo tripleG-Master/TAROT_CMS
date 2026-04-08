@@ -1,0 +1,81 @@
+<main class="container py-4">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+      <h1 class="h3 brand mb-1">Mensajes de Arcanos</h1>
+      <div class="muted">Filtra por arcano/posición/contexto/tono y revisa el contenido.</div>
+    </div>
+    <a class="btn btn-outline-light" href="/tarot/lectura">Volver a Lectura</a>
+  </div>
+
+  <div class="card p-4">
+    <form method="GET" action="/tarot/mensajes" class="row g-3">
+      <div class="col-md-3">
+        <label class="form-label">Arcano ID</label>
+        <input class="form-control" name="arcano_id" value="{{filters.arcano_id}}" placeholder="0–21" />
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Posición</label>
+        <select name="posicion" class="form-select">
+          <option value="" {{#unless filters.posicion}}selected{{/unless}}>Todas</option>
+          <option value="pasado" {{#if (eq filters.posicion "pasado")}}selected{{/if}}>pasado</option>
+          <option value="presente" {{#if (eq filters.posicion "presente")}}selected{{/if}}>presente</option>
+          <option value="futuro" {{#if (eq filters.posicion "futuro")}}selected{{/if}}>futuro</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Contexto</label>
+        <select name="contexto" class="form-select">
+          <option value="" {{#unless filters.contexto}}selected{{/unless}}>Todos</option>
+          <option value="general" {{#if (eq filters.contexto "general")}}selected{{/if}}>general</option>
+          <option value="amor" {{#if (eq filters.contexto "amor")}}selected{{/if}}>amor</option>
+          <option value="salud" {{#if (eq filters.contexto "salud")}}selected{{/if}}>salud</option>
+          <option value="dinero" {{#if (eq filters.contexto "dinero")}}selected{{/if}}>dinero</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Tono</label>
+        <select name="perfil_tono" class="form-select">
+          <option value="" {{#unless filters.perfil_tono}}selected{{/unless}}>Todos</option>
+          <option value="empático" {{#if (eq filters.perfil_tono "empático")}}selected{{/if}}>empático</option>
+          <option value="directo" {{#if (eq filters.perfil_tono "directo")}}selected{{/if}}>directo</option>
+          <option value="místico" {{#if (eq filters.perfil_tono "místico")}}selected{{/if}}>místico</option>
+        </select>
+      </div>
+      <div class="col-md-12 d-flex align-items-end">
+        <button class="btn btn-mystic text-dark fw-semibold w-100" type="submit">Filtrar</button>
+      </div>
+    </form>
+
+    <hr class="border-secondary my-3" />
+
+    <div class="table-responsive">
+      <table class="table table-striped align-middle mb-0">
+        <thead>
+          <tr>
+            <th style="width: 90px;">Arcano</th>
+            <th style="width: 110px;">Posición</th>
+            <th style="width: 110px;">Contexto</th>
+            <th style="width: 110px;">Tono</th>
+            <th>Contenido</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each rows}}
+            <tr>
+              <td><span class="badge bg-secondary">{{arcano_id}}</span></td>
+              <td><span class="badge bg-dark">{{posicion}}</span></td>
+              <td><span class="badge bg-info text-dark">{{contexto}}</span></td>
+              <td><span class="badge bg-warning text-dark">{{perfil_tono}}</span></td>
+              <td style="white-space: pre-wrap;">{{contenido}}</td>
+            </tr>
+          {{/each}}
+          {{#unless rows}}
+            <tr>
+              <td colspan="5" class="py-4"><div class="muted">No hay mensajes con estos filtros.</div></td>
+            </tr>
+          {{/unless}}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>

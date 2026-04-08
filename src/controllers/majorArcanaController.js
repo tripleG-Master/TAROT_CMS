@@ -222,6 +222,12 @@ function showImportForm(req, res) {
     title: "Importar Arcanos",
     json: "",
     csv: "",
+    connectorsJson: "",
+    connectorsCsv: "",
+    messagesJson: "",
+    messagesCsv: "",
+    connectorsStatus: "",
+    messagesStatus: "",
     error: "",
     result: null
   });
@@ -489,6 +495,12 @@ async function importJson(req, res, next) {
         title: "Importar Arcanos",
         json: typeof input === "string" ? input : JSON.stringify(req.body, null, 2),
         csv: "",
+        connectorsJson: "",
+        connectorsCsv: "",
+        messagesJson: "",
+        messagesCsv: "",
+        connectorsStatus: "",
+        messagesStatus: "",
         error: "No se encontraron entradas válidas para importar (número 0–21 y nombre obligatorio).",
         result: null
       });
@@ -498,6 +510,12 @@ async function importJson(req, res, next) {
       title: "Importar Arcanos",
       json: "",
       csv: "",
+      connectorsJson: "",
+      connectorsCsv: "",
+      messagesJson: "",
+      messagesCsv: "",
+      connectorsStatus: "",
+      messagesStatus: "",
       error: "",
       result: { created, updated, skipped }
     });
@@ -510,6 +528,12 @@ async function importJson(req, res, next) {
       title: "Importar Arcanos",
       json: req.body?.json || "",
       csv: "",
+      connectorsJson: "",
+      connectorsCsv: "",
+      messagesJson: "",
+      messagesCsv: "",
+      connectorsStatus: "",
+      messagesStatus: "",
       error: message,
       result: null
     });
@@ -612,6 +636,12 @@ async function importCsv(req, res, next) {
         title: "Importar Arcanos",
         json: "",
         csv,
+        connectorsJson: "",
+        connectorsCsv: "",
+        messagesJson: "",
+        messagesCsv: "",
+        connectorsStatus: "",
+        messagesStatus: "",
         error: "No se encontraron entradas válidas en el CSV (número 0–21 y nombre obligatorio).",
         result: null
       });
@@ -621,6 +651,12 @@ async function importCsv(req, res, next) {
       title: "Importar Arcanos",
       json: "",
       csv: "",
+      connectorsJson: "",
+      connectorsCsv: "",
+      messagesJson: "",
+      messagesCsv: "",
+      connectorsStatus: "",
+      messagesStatus: "",
       error: "",
       result: { created, updated, skipped }
     });
@@ -629,6 +665,12 @@ async function importCsv(req, res, next) {
       title: "Importar Arcanos",
       json: "",
       csv: req.body?.csv || "",
+      connectorsJson: "",
+      connectorsCsv: "",
+      messagesJson: "",
+      messagesCsv: "",
+      connectorsStatus: "",
+      messagesStatus: "",
       error: err?.message || "Error importando CSV.",
       result: null
     });
@@ -647,6 +689,12 @@ async function importCsvFile(req, res, next) {
         title: "Importar Arcanos",
         json: "",
         csv,
+        connectorsJson: "",
+        connectorsCsv: "",
+        messagesJson: "",
+        messagesCsv: "",
+        connectorsStatus: "",
+        messagesStatus: "",
         error: `No se encontraron entradas válidas en el archivo (${originalName || "CSV"}).`,
         result: null
       });
@@ -656,6 +704,12 @@ async function importCsvFile(req, res, next) {
       title: "Importar Arcanos",
       json: "",
       csv: "",
+      connectorsJson: "",
+      connectorsCsv: "",
+      messagesJson: "",
+      messagesCsv: "",
+      connectorsStatus: "",
+      messagesStatus: "",
       error: "",
       result: { created, updated, skipped }
     });
@@ -664,6 +718,12 @@ async function importCsvFile(req, res, next) {
       title: "Importar Arcanos",
       json: "",
       csv: "",
+      connectorsJson: "",
+      connectorsCsv: "",
+      messagesJson: "",
+      messagesCsv: "",
+      connectorsStatus: "",
+      messagesStatus: "",
       error: err?.message || "Error importando archivo CSV.",
       result: null
     });
@@ -686,6 +746,12 @@ async function importLocal(req, res) {
         title: "Importar Arcanos",
         json: "",
         csv: "",
+        connectorsJson: "",
+        connectorsCsv: "",
+        messagesJson: "",
+        messagesCsv: "",
+        connectorsStatus: "",
+        messagesStatus: "",
         error: "No se encontraron entradas válidas en data/arcanosMajores.json.",
         result: null
       });
@@ -695,6 +761,12 @@ async function importLocal(req, res) {
       title: "Importar Arcanos",
       json: "",
       csv: "",
+      connectorsJson: "",
+      connectorsCsv: "",
+      messagesJson: "",
+      messagesCsv: "",
+      connectorsStatus: "",
+      messagesStatus: "",
       error: "",
       result: { created, updated, skipped }
     });
@@ -703,7 +775,311 @@ async function importLocal(req, res) {
       title: "Importar Arcanos",
       json: "",
       csv: "",
+      connectorsJson: "",
+      connectorsCsv: "",
+      messagesJson: "",
+      messagesCsv: "",
+      connectorsStatus: "",
+      messagesStatus: "",
       error: err?.message || "Error leyendo data/arcanosMajores.json.",
+      result: null
+    });
+  }
+}
+
+async function importConnectorsJson(req, res, next) {
+  try {
+    const input = req.body?.connectorsJson ?? req.body?.json ?? req.body;
+    let rows = input;
+    if (typeof rows === "string") {
+      const trimmed = rows.trim();
+      rows = trimmed ? JSON.parse(trimmed) : null;
+    }
+    const list = Array.isArray(rows) ? rows : rows?.items ?? [];
+    const normalized = list
+      .map((r) => ({
+        tipo: String(r.tipo || "").trim(),
+        polaridad: String(r.polaridad || "").trim(),
+        texto: String(r.texto || "").trim()
+      }))
+      .filter((r) => r.tipo && r.polaridad && r.texto);
+    if (normalized.length === 0) {
+      return res.status(400).render("majorArcana/import", {
+        title: "Importar Arcanos",
+        json: "",
+        csv: "",
+        connectorsJson: typeof input === "string" ? input : JSON.stringify(req.body, null, 2),
+        connectorsCsv: "",
+        messagesJson: "",
+        messagesCsv: "",
+        connectorsStatus: "",
+        messagesStatus: "",
+        error: "No se encontraron conectores válidos."
+      });
+    }
+    await db.models.Connector.bulkCreate(normalized);
+    res.render("majorArcana/import", {
+      title: "Importar Arcanos",
+      json: "",
+      csv: "",
+      connectorsJson: "",
+      connectorsCsv: "",
+      messagesJson: "",
+      messagesCsv: "",
+      connectorsStatus: `Conectores importados: ${normalized.length}`,
+      messagesStatus: "",
+      error: "",
+      result: null
+    });
+  } catch (err) {
+    res.status(400).render("majorArcana/import", {
+      title: "Importar Arcanos",
+      json: "",
+      csv: "",
+      connectorsJson: req.body?.connectorsJson || req.body?.json || "",
+      connectorsCsv: "",
+      messagesJson: "",
+      messagesCsv: "",
+      connectorsStatus: "",
+      messagesStatus: "",
+      error: err?.message || "Error importando conectores.",
+      result: null
+    });
+  }
+}
+
+async function importArcanaMessagesJson(req, res, next) {
+  try {
+    const input = req.body?.messagesJson ?? req.body?.json ?? req.body;
+    let rows = input;
+    if (typeof rows === "string") {
+      const trimmed = rows.trim();
+      rows = trimmed ? JSON.parse(trimmed) : null;
+    }
+    const list = Array.isArray(rows) ? rows : rows?.items ?? [];
+    const normalized = list
+      .map((r) => ({
+        arcano_id: Number(r.arcano_id ?? r.arcanoId ?? r.numero),
+        posicion: String(r.posicion || "").trim(),
+        contexto: String(r.contexto || "").trim(),
+        perfil_tono: String(r.perfil_tono || "").trim(),
+        contenido: String(r.contenido || "").trim()
+      }))
+      .filter(
+        (r) =>
+          Number.isInteger(r.arcano_id) &&
+          r.posicion &&
+          r.contexto &&
+          r.perfil_tono &&
+          r.contenido
+      );
+    if (normalized.length === 0) {
+      return res.status(400).render("majorArcana/import", {
+        title: "Importar Arcanos",
+        json: "",
+        csv: "",
+        connectorsJson: "",
+        connectorsCsv: "",
+        messagesJson: typeof input === "string" ? input : JSON.stringify(req.body, null, 2),
+        messagesCsv: "",
+        connectorsStatus: "",
+        messagesStatus: "",
+        error: "No se encontraron mensajes válidos."
+      });
+    }
+    await db.models.ArcanaMessage.bulkCreate(normalized);
+    res.render("majorArcana/import", {
+      title: "Importar Arcanos",
+      json: "",
+      csv: "",
+      connectorsJson: "",
+      connectorsCsv: "",
+      messagesJson: "",
+      messagesCsv: "",
+      connectorsStatus: "",
+      messagesStatus: `Mensajes importados: ${normalized.length}`,
+      error: "",
+      result: null
+    });
+  } catch (err) {
+    res.status(400).render("majorArcana/import", {
+      title: "Importar Arcanos",
+      json: "",
+      csv: "",
+      connectorsJson: "",
+      connectorsCsv: "",
+      messagesJson: req.body?.messagesJson || req.body?.json || "",
+      messagesCsv: "",
+      connectorsStatus: "",
+      messagesStatus: "",
+      error: err?.message || "Error importando mensajes.",
+      result: null
+    });
+  }
+}
+
+async function importConnectorsCsv(req, res, next) {
+  try {
+    const csv = String(req.body?.connectorsCsv || req.body?.csv || "");
+    const rows = csvToObjects(csv);
+    const normalized = rows
+      .map((r) => ({
+        tipo: String(r.tipo || "").trim(),
+        polaridad: String(r.polaridad || "").trim(),
+        texto: String(r.texto || "").trim()
+      }))
+      .filter((r) => r.tipo && r.polaridad && r.texto);
+    if (normalized.length === 0) {
+      return res.status(400).render("majorArcana/import", {
+        title: "Importar Arcanos",
+        json: "",
+        csv: "",
+        connectorsJson: "",
+        connectorsCsv: csv,
+        messagesJson: "",
+        messagesCsv: "",
+        connectorsStatus: "",
+        messagesStatus: "",
+        error: "No se encontraron conectores válidos en CSV."
+      });
+    }
+    await db.models.Connector.bulkCreate(normalized);
+    res.render("majorArcana/import", {
+      title: "Importar Arcanos",
+      json: "",
+      csv: "",
+      connectorsJson: "",
+      connectorsCsv: "",
+      messagesJson: "",
+      messagesCsv: "",
+      connectorsStatus: `Conectores importados: ${normalized.length}`,
+      messagesStatus: "",
+      error: "",
+      result: null
+    });
+  } catch (err) {
+    res.status(400).render("majorArcana/import", {
+      title: "Importar Arcanos",
+      json: "",
+      csv: "",
+      connectorsJson: "",
+      connectorsCsv: req.body?.connectorsCsv || req.body?.csv || "",
+      messagesJson: "",
+      messagesCsv: "",
+      connectorsStatus: "",
+      messagesStatus: "",
+      error: err?.message || "Error importando conectores CSV.",
+      result: null
+    });
+  }
+}
+
+async function importArcanaMessagesCsv(req, res, next) {
+  try {
+    const csv = String(req.body?.messagesCsv || req.body?.csv || "");
+    const rows = csvToObjects(csv);
+    const normalized = rows
+      .map((r) => ({
+        arcano_id: Number(r.arcano_id ?? r.arcanoId ?? r.numero),
+        posicion: String(r.posicion || "").trim(),
+        contexto: String(r.contexto || "").trim(),
+        perfil_tono: String(r.perfil_tono || "").trim(),
+        contenido: String(r.contenido || "").trim()
+      }))
+      .filter(
+        (r) =>
+          Number.isInteger(r.arcano_id) &&
+          r.posicion &&
+          r.contexto &&
+          r.perfil_tono &&
+          r.contenido
+      );
+    if (normalized.length === 0) {
+      return res.status(400).render("majorArcana/import", {
+        title: "Importar Arcanos",
+        json: "",
+        csv: "",
+        connectorsJson: "",
+        connectorsCsv: "",
+        messagesJson: "",
+        messagesCsv: csv,
+        connectorsStatus: "",
+        messagesStatus: "",
+        error: "No se encontraron mensajes válidos en CSV."
+      });
+    }
+    await db.models.ArcanaMessage.bulkCreate(normalized);
+    res.render("majorArcana/import", {
+      title: "Importar Arcanos",
+      json: "",
+      csv: "",
+      connectorsJson: "",
+      connectorsCsv: "",
+      messagesJson: "",
+      messagesCsv: "",
+      connectorsStatus: "",
+      messagesStatus: `Mensajes importados: ${normalized.length}`,
+      error: "",
+      result: null
+    });
+  } catch (err) {
+    res.status(400).render("majorArcana/import", {
+      title: "Importar Arcanos",
+      json: "",
+      csv: "",
+      connectorsJson: "",
+      connectorsCsv: "",
+      messagesJson: "",
+      messagesCsv: req.body?.messagesCsv || req.body?.csv || "",
+      connectorsStatus: "",
+      messagesStatus: "",
+      error: err?.message || "Error importando mensajes CSV.",
+      result: null
+    });
+  }
+}
+
+async function importConnectorsCsvFile(req, res, next) {
+  try {
+    const originalName = req.file?.originalname ? String(req.file.originalname) : "";
+    const csv = req.file?.buffer ? req.file.buffer.toString("utf8") : "";
+    req.body.connectorsCsv = csv;
+    return importConnectorsCsv(req, res, next);
+  } catch (err) {
+    res.status(400).render("majorArcana/import", {
+      title: "Importar Arcanos",
+      json: "",
+      csv: "",
+      connectorsJson: "",
+      connectorsCsv: "",
+      messagesJson: "",
+      messagesCsv: "",
+      connectorsStatus: "",
+      messagesStatus: "",
+      error: err?.message || "Error importando archivo CSV (conectores).",
+      result: null
+    });
+  }
+}
+
+async function importArcanaMessagesCsvFile(req, res, next) {
+  try {
+    const originalName = req.file?.originalname ? String(req.file.originalname) : "";
+    const csv = req.file?.buffer ? req.file.buffer.toString("utf8") : "";
+    req.body.messagesCsv = csv;
+    return importArcanaMessagesCsv(req, res, next);
+  } catch (err) {
+    res.status(400).render("majorArcana/import", {
+      title: "Importar Arcanos",
+      json: "",
+      csv: "",
+      connectorsJson: "",
+      connectorsCsv: "",
+      messagesJson: "",
+      messagesCsv: "",
+      connectorsStatus: "",
+      messagesStatus: "",
+      error: err?.message || "Error importando archivo CSV (mensajes).",
       result: null
     });
   }
@@ -1320,6 +1696,12 @@ module.exports = {
   importJson,
   importCsv,
   importCsvFile,
+  importConnectorsJson,
+  importArcanaMessagesJson,
+  importConnectorsCsv,
+  importArcanaMessagesCsv,
+  importConnectorsCsvFile,
+  importArcanaMessagesCsvFile,
   importLocal,
   list,
   showCreateForm,

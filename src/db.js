@@ -72,6 +72,30 @@ async function initDb() {
     ADD COLUMN IF NOT EXISTS extra JSONB NOT NULL DEFAULT '{}'::jsonb;
   `);
 
+  await sequelize.query(`
+    CREATE TABLE IF NOT EXISTS connectores (
+      id SERIAL PRIMARY KEY,
+      tipo TEXT NOT NULL,
+      polaridad TEXT NOT NULL,
+      texto TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_connectores_tipo_polaridad
+      ON connectores (tipo, polaridad);
+
+    CREATE TABLE IF NOT EXISTS mensajes_arcanos (
+      id SERIAL PRIMARY KEY,
+      arcano_id INTEGER NOT NULL,
+      posicion TEXT NOT NULL,
+      contexto TEXT NOT NULL,
+      perfil_tono TEXT NOT NULL,
+      contenido TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_mensajes_arcanos_lookup
+      ON mensajes_arcanos (arcano_id, posicion, contexto, perfil_tono);
+  `);
+
   await sequelize.sync();
 }
 

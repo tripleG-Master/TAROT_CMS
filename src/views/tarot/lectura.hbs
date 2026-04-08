@@ -1,0 +1,218 @@
+<main class="container py-4">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+      <h1 class="h3 brand mb-1">Lectura (3 cartas)</h1>
+      <div class="muted">Prueba el Motor de Narrativa (Pasado · Presente · Futuro).</div>
+    </div>
+    <a class="btn btn-outline-light" href="/arcanos">Volver</a>
+  </div>
+
+  {{#unless hasArcanos}}
+    <div class="alert alert-warning">No hay arcanos en la base de datos.</div>
+  {{/unless}}
+
+  <div class="card p-4">
+    <form id="readingForm" class="row g-3">
+      <div class="col-md-4">
+        <label class="form-label">Nombre</label>
+        <input id="name" name="name" type="text" class="form-control" placeholder="Tu nombre" />
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Género</label>
+        <select id="gender" name="gender" class="form-select">
+          <option value="mujer">Mujer</option>
+          <option value="hombre">Hombre</option>
+          <option value="neutro">Neutro</option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Fecha nacimiento</label>
+        <input id="birthdate" name="birthdate" type="date" class="form-control" />
+      </div>
+
+      <div class="col-md-4">
+        <label class="form-label">Tema</label>
+        <select id="tema" name="tema" class="form-select">
+          <option value="amor">Amor</option>
+          <option value="salud">Salud</option>
+          <option value="dinero">Dinero</option>
+          <option value="general" selected>General</option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Tono</label>
+        <select id="tono" name="tono" class="form-select">
+          <option value="" selected>Auto</option>
+          <option value="empático">Empático</option>
+          <option value="directo">Directo</option>
+          <option value="místico">Místico</option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">API Token</label>
+        <input id="apiToken" name="apiToken" type="password" class="form-control" placeholder="Bearer..." />
+      </div>
+
+      <div class="col-12">
+        <hr class="border-secondary my-2" />
+        <div class="fw-semibold">Tirada</div>
+        <div class="muted">Selecciona 3 cartas y su orientación.</div>
+      </div>
+
+      <div class="col-md-4">
+        <label class="form-label">Pasado</label>
+        <select id="cardPast" class="form-select">
+          {{#each arcanos}}
+            <option value="{{numero}}">{{numero}} · {{nombre}}</option>
+          {{/each}}
+        </select>
+        <select id="oriPast" class="form-select mt-2">
+          <option value="upright" selected>Derecho (positivo)</option>
+          <option value="reversed">Invertido (negativo)</option>
+        </select>
+      </div>
+
+      <div class="col-md-4">
+        <label class="form-label">Presente</label>
+        <select id="cardPresent" class="form-select">
+          {{#each arcanos}}
+            <option value="{{numero}}">{{numero}} · {{nombre}}</option>
+          {{/each}}
+        </select>
+        <select id="oriPresent" class="form-select mt-2">
+          <option value="upright" selected>Derecho (positivo)</option>
+          <option value="reversed">Invertido (negativo)</option>
+        </select>
+      </div>
+
+      <div class="col-md-4">
+        <label class="form-label">Futuro</label>
+        <select id="cardFuture" class="form-select">
+          {{#each arcanos}}
+            <option value="{{numero}}">{{numero}} · {{nombre}}</option>
+          {{/each}}
+        </select>
+        <select id="oriFuture" class="form-select mt-2">
+          <option value="upright" selected>Derecho (positivo)</option>
+          <option value="reversed">Invertido (negativo)</option>
+        </select>
+      </div>
+
+      <div class="col-12 d-flex gap-2">
+        <button class="btn btn-mystic text-dark fw-semibold flex-grow-1" type="submit">Generar lectura</button>
+        <button class="btn btn-outline-secondary" type="button" id="seedBtn">Seed narrativa</button>
+      </div>
+    </form>
+
+    <hr class="border-secondary my-3" />
+
+    <div id="readingError" class="alert alert-danger d-none"></div>
+    <div id="readingOk" class="d-none">
+      <div class="fw-semibold mb-2">Lectura</div>
+      <textarea id="readingText" class="form-control" rows="8" spellcheck="false" readonly></textarea>
+
+      <div class="fw-semibold mt-3 mb-2">Debug</div>
+      <textarea id="readingDebug" class="form-control" rows="10" spellcheck="false" readonly></textarea>
+    </div>
+  </div>
+</main>
+
+<script>
+  (function () {
+    const storedToken = localStorage.getItem("tarotCmsApiToken") || "";
+
+    const form = document.getElementById("readingForm");
+    const seedBtn = document.getElementById("seedBtn");
+
+    const nameInput = document.getElementById("name");
+    const genderInput = document.getElementById("gender");
+    const birthdateInput = document.getElementById("birthdate");
+    const temaInput = document.getElementById("tema");
+    const tonoInput = document.getElementById("tono");
+    const tokenInput = document.getElementById("apiToken");
+
+    const cardPast = document.getElementById("cardPast");
+    const cardPresent = document.getElementById("cardPresent");
+    const cardFuture = document.getElementById("cardFuture");
+    const oriPast = document.getElementById("oriPast");
+    const oriPresent = document.getElementById("oriPresent");
+    const oriFuture = document.getElementById("oriFuture");
+
+    const error = document.getElementById("readingError");
+    const ok = document.getElementById("readingOk");
+    const readingText = document.getElementById("readingText");
+    const readingDebug = document.getElementById("readingDebug");
+
+    if (storedToken) tokenInput.value = storedToken;
+
+    function headers() {
+      const token = tokenInput.value || "";
+      localStorage.setItem("tarotCmsApiToken", token);
+      const h = { "Accept": "application/json", "Content-Type": "application/json" };
+      if (token) h["Authorization"] = "Bearer " + token;
+      return h;
+    }
+
+    function showError(message) {
+      error.textContent = message || "Error inesperado";
+      error.classList.remove("d-none");
+      ok.classList.add("d-none");
+    }
+
+    function showOk(payload) {
+      readingText.value = payload.lectura || "";
+      readingDebug.value = JSON.stringify(payload, null, 2);
+      ok.classList.remove("d-none");
+      error.classList.add("d-none");
+    }
+
+    seedBtn.addEventListener("click", async function () {
+      try {
+        const res = await fetch("/api/narrative/seed", { method: "POST", headers: headers() });
+        const data = await res.json().catch(() => null);
+        if (res.status === 401) return showError("Unauthorized. Pega el API token para usar /api.");
+        if (!res.ok || !data || data.ok !== true) return showError((data && data.error) || ("HTTP " + res.status));
+        showError("Seed OK: " + JSON.stringify(data.result));
+      } catch (e) {
+        showError(e && e.message ? e.message : "Error de red");
+      }
+    });
+
+    form.addEventListener("submit", async function (e) {
+      e.preventDefault();
+
+      try {
+        const payload = {
+          user_data: {
+            nombre: nameInput.value || "",
+            genero: genderInput.value || "",
+            nacimiento: birthdateInput.value || ""
+          },
+          tema: temaInput.value || "general",
+          perfil_tono: tonoInput.value || "",
+          tirada: {
+            cards: [
+              { id: Number(cardPast.value), posicion: "pasado", orientacion: oriPast.value },
+              { id: Number(cardPresent.value), posicion: "presente", orientacion: oriPresent.value },
+              { id: Number(cardFuture.value), posicion: "futuro", orientacion: oriFuture.value }
+            ]
+          }
+        };
+
+        const res = await fetch("/api/narrative/three-cards", {
+          method: "POST",
+          headers: headers(),
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json().catch(() => null);
+        if (res.status === 401) return showError("Unauthorized. Pega el API token para usar /api.");
+        if (!res.ok || !data || data.ok !== true) return showError((data && data.error) || ("HTTP " + res.status));
+        showOk(data);
+      } catch (err) {
+        showError(err && err.message ? err.message : "Error de red");
+      }
+    });
+  })();
+</script>
+
