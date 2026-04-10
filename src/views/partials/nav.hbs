@@ -9,6 +9,9 @@
         <li class="nav-item">
           <a class="nav-link" href="/arcanos">Arcanos Mayores</a>
         </li>
+        <li class="nav-item">
+          <a class="nav-link" href="/menores">Arcanos Menores</a>
+        </li>
       </ul>
       <div class="d-flex gap-2">
         <div class="btn-group">
@@ -18,11 +21,23 @@
           <ul class="dropdown-menu dropdown-menu-end">
             <li><a class="dropdown-item" href="/tarot/calculo">Cálculo (perfil)</a></li>
             <li><a class="dropdown-item" href="/tarot/lectura">Lectura (3 cartas)</a></li>
+            <li><a class="dropdown-item" href="/tarot/gemini">Gemini (prueba)</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="/tarot/gemini/generations">Generaciones Gemini</a></li>
+            <li><a class="dropdown-item" href="/tarot/gemini/templates">Plantillas Gemini</a></li>
             <li><a class="dropdown-item" href="/tarot/conectores">Conectores</a></li>
             <li><a class="dropdown-item" href="/tarot/mensajes">Mensajes</a></li>
           </ul>
         </div>
-        <a class="btn btn-outline-light" href="/arcanos/import">Importar</a>
+        <div class="btn-group">
+          <button type="button" class="btn btn-outline-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+            Importar
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="/arcanos/import">Arcanos Mayores</a></li>
+            <li><a class="dropdown-item" href="/menores/import">Arcanos Menores</a></li>
+          </ul>
+        </div>
         <div class="btn-group">
           <button type="button" class="btn btn-outline-info dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
             Exportar JSON
@@ -30,11 +45,20 @@
           <ul class="dropdown-menu dropdown-menu-end">
             <li><a class="dropdown-item" href="/arcanos/export/arcanos.json">V1 (arcanos.json)</a></li>
             <li><a class="dropdown-item" href="/arcanos/export/v2/arcanos.json">V2 (arcanos.v2.json)</a></li>
+            <li><a class="dropdown-item" href="/menores/export/v2/arcanos-menores.json">Menores V2</a></li>
             <li><hr class="dropdown-divider"></li>
             <li><a class="dropdown-item" href="/arcanos/export/builder">Custom (Builder)</a></li>
           </ul>
         </div>
-        <a class="btn btn-mystic text-dark fw-semibold" href="/arcanos/new">Nuevo</a>
+        <div class="btn-group">
+          <button type="button" class="btn btn-mystic text-dark fw-semibold dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+            Nuevo
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="/arcanos/new">Arcano Mayor</a></li>
+            <li><a class="dropdown-item" href="/menores/new">Arcano Menor</a></li>
+          </ul>
+        </div>
       </div>
     </div>
   </div>

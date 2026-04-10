@@ -116,7 +116,8 @@ module.exports = function defineMajorArcana(sequelize, DataTypes) {
     {
       tableName: "MajorArcana",
       freezeTableName: true,
-      timestamps: false
+      timestamps: true,
+      paranoid: true
     }
   );
 };

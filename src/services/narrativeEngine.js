@@ -2,7 +2,7 @@ const db = require("../db");
 
 const POSITIONS = new Set(["pasado", "presente", "futuro"]);
 const CONTEXTS = new Set(["amor", "salud", "dinero", "general"]);
-const TONES = new Set(["empático", "directo", "místico"]);
+const PROFILES = new Set(["empatico", "directo", "mistico", "general"]);
 
 function normalizeGender(input) {
   const raw = String(input || "").trim().toLowerCase();
@@ -33,12 +33,26 @@ function polarityFromOrientation(orientation) {
   return "neutro";
 }
 
+function messagePolarityFromOrientation(orientation) {
+  const p = polarityFromOrientation(orientation);
+  if (p === "positivo") return "favorable";
+  if (p === "negativo") return "desafiante";
+  return "neutra";
+}
+
+function sentidoFromOrientation(orientation) {
+  const raw = String(orientation || "").trim().toLowerCase();
+  if (["upright", "derecho", "positivo", "pos", "light", "luz"].includes(raw)) return "derecho";
+  if (["reversed", "invertido", "invertida", "negativo", "neg", "shadow", "sombra"].includes(raw)) return "invertido";
+  return "neutro";
+}
+
 function connectorPolarity(a, b) {
   if (a === "neutro" || b === "neutro") return "neutro";
-  if (a === "positivo" && b === "positivo") return "positivo_positivo";
-  if (a === "positivo" && b === "negativo") return "positivo_negativo";
-  if (a === "negativo" && b === "positivo") return "negativo_positivo";
-  if (a === "negativo" && b === "negativo") return "negativo_negativo";
+  if (a === "positivo" && b === "positivo") return "pos_pos";
+  if (a === "positivo" && b === "negativo") return "pos_neg";
+  if (a === "negativo" && b === "positivo") return "neg_pos";
+  if (a === "negativo" && b === "negativo") return "neg_neg";
   return "neutro";
 }
 
@@ -48,49 +62,79 @@ function normalizeContext(input) {
   return "general";
 }
 
-function normalizeTone(input) {
+function normalizeProfile(input) {
   const raw = String(input || "").trim().toLowerCase();
-  if (raw === "empatico") return "empático";
-  if (TONES.has(raw)) return raw;
+  if (!raw) return "";
+  if (raw === "empático") return "empatico";
+  if (raw === "místico") return "mistico";
+  if (PROFILES.has(raw)) return raw;
   return "";
 }
 
-function randomTone() {
-  const all = ["empático", "directo", "místico"];
+function randomProfile() {
+  const all = ["empatico", "directo", "mistico"];
   return all[Math.floor(Math.random() * all.length)];
 }
 
-async function pickRandomConnector(tipo, polaridad) {
-  const { Connector } = db.models;
-  const row =
-    (await Connector.findOne({
-      where: { tipo, polaridad },
-      order: db.sequelize.random(),
-      raw: true
-    })) ||
-    (await Connector.findOne({
-      where: { tipo, polaridad: "neutro" },
-      order: db.sequelize.random(),
-      raw: true
-    })) ||
-    (await Connector.findOne({
-      where: { tipo },
-      order: db.sequelize.random(),
-      raw: true
-    }));
-  return row;
+function pickWeighted(rows) {
+  const items = (rows || []).map((r) => ({ row: r, peso: Number(r.peso) || 1 }));
+  const total = items.reduce((acc, x) => acc + Math.max(1, x.peso), 0);
+  if (total <= 0 || items.length === 0) return null;
+  let roll = Math.random() * total;
+  for (const item of items) {
+    roll -= Math.max(1, item.peso);
+    if (roll <= 0) return item.row;
+  }
+  return items[items.length - 1].row;
 }
 
-async function pickRandomArcanaMessage({ arcano_id, posicion, contexto, perfil_tono }) {
+async function pickRandomConnector(tipo, polaridad, perfil) {
+  const { Connector } = db.models;
+
+  const p = normalizeProfile(perfil) || "general";
+  const fallbacks = [
+    { tipo, polaridad, perfil: p },
+    { tipo, polaridad, perfil: "general" },
+    { tipo, polaridad: "neutro", perfil: p },
+    { tipo, polaridad: "neutro", perfil: "general" },
+    { tipo, perfil: p },
+    { tipo, perfil: "general" },
+    { tipo }
+  ];
+
+  for (const where of fallbacks) {
+    const rows = await Connector.findAll({ where, raw: true });
+    if (rows.length > 0) return pickWeighted(rows);
+  }
+  return null;
+}
+
+async function pickRandomArcanaMessage({ arcano_id, posicion, contexto, perfil_tono, polaridad, sentido }) {
   const { ArcanaMessage } = db.models;
 
-  const tone = normalizeTone(perfil_tono);
+  const tone = normalizeProfile(perfil_tono);
   const whereBase = { arcano_id, posicion };
   const ctx = normalizeContext(contexto);
+  const polRaw = String(polaridad || "").trim().toLowerCase();
+  const senRaw = String(sentido || "").trim().toLowerCase();
+  const polarities = ["favorable", "desafiante", "neutra"].includes(polRaw) ? [polRaw] : [];
+  const senses = ["derecho", "invertido", "neutro"].includes(senRaw) ? [senRaw] : [];
 
   const variants = [];
+  if (tone && polarities.length > 0 && senses.length > 0) {
+    for (const p of polarities) for (const s of senses) variants.push({ ...whereBase, contexto: ctx, perfil_tono: tone, polaridad: p, sentido: s });
+  }
+  if (polarities.length > 0 && senses.length > 0) {
+    for (const p of polarities) for (const s of senses) variants.push({ ...whereBase, contexto: ctx, polaridad: p, sentido: s });
+  }
   if (tone) variants.push({ ...whereBase, contexto: ctx, perfil_tono: tone });
   variants.push({ ...whereBase, contexto: ctx });
+  if (tone && polarities.length > 0 && senses.length > 0) {
+    for (const p of polarities) for (const s of senses) variants.push({ ...whereBase, contexto: "general", perfil_tono: tone, polaridad: p, sentido: s });
+  }
+  if (polarities.length > 0 && senses.length > 0) {
+    for (const p of polarities) for (const s of senses) variants.push({ ...whereBase, contexto: "general", polaridad: p, sentido: s });
+  }
   if (tone) variants.push({ ...whereBase, contexto: "general", perfil_tono: tone });
   variants.push({ ...whereBase, contexto: "general" });
 
@@ -132,33 +176,47 @@ async function buildReading({ user, tirada, tema, perfil_tono }) {
   }
 
   const context = normalizeContext(tema);
-  const tone = normalizeTone(perfil_tono) || randomTone();
+  const profile = normalizeProfile(perfil_tono) || randomProfile();
 
   const p1 = polarityFromOrientation(cards.pasado.orientation);
   const p2 = polarityFromOrientation(cards.presente.orientation);
   const p3 = polarityFromOrientation(cards.futuro.orientation);
+  const s1 = sentidoFromOrientation(cards.pasado.orientation);
+  const s2 = sentidoFromOrientation(cards.presente.orientation);
+  const s3 = sentidoFromOrientation(cards.futuro.orientation);
 
-  const conn12 = await pickRandomConnector("pasado_presente", connectorPolarity(p1, p2));
-  const conn23 = await pickRandomConnector("presente_futuro", connectorPolarity(p2, p3));
-  const cierre = await pickRandomConnector("cierre", p3 === "neutro" ? "neutro" : p3 === "positivo" ? "positivo_positivo" : "negativo_negativo");
+  const intro = await pickRandomConnector("intro", "neutro", profile);
+  const conn12 = await pickRandomConnector("pasado_presente", connectorPolarity(p1, p2), profile);
+  const conn23 = await pickRandomConnector("presente_futuro", connectorPolarity(p2, p3), profile);
+  const cierre = await pickRandomConnector(
+    "cierre",
+    p3 === "neutro" ? "neutro" : p3 === "positivo" ? "pos_pos" : "neg_neg",
+    profile
+  );
 
   const m1 = await pickRandomArcanaMessage({
     arcano_id: cards.pasado.arcano_id,
     posicion: "pasado",
     contexto: context,
-    perfil_tono: tone
+    perfil_tono: profile,
+    polaridad: messagePolarityFromOrientation(cards.pasado.orientation),
+    sentido: s1
   });
   const m2 = await pickRandomArcanaMessage({
     arcano_id: cards.presente.arcano_id,
     posicion: "presente",
     contexto: context,
-    perfil_tono: tone
+    perfil_tono: profile,
+    polaridad: messagePolarityFromOrientation(cards.presente.orientation),
+    sentido: s2
   });
   const m3 = await pickRandomArcanaMessage({
     arcano_id: cards.futuro.arcano_id,
     posicion: "futuro",
     contexto: context,
-    perfil_tono: tone
+    perfil_tono: profile,
+    polaridad: messagePolarityFromOrientation(cards.futuro.orientation),
+    sentido: s3
   });
 
   if (!m1 || !m2 || !m3) {
@@ -171,6 +229,7 @@ async function buildReading({ user, tirada, tema, perfil_tono }) {
   const ctx = { nombre: user?.nombre ?? user?.name, genero: user?.genero ?? user?.gender };
 
   const parts = [
+    intro ? applyPlaceholders(intro.texto, ctx) : "",
     applyPlaceholders(m1.contenido, ctx),
     conn12 ? applyPlaceholders(conn12.texto, ctx) : "",
     applyPlaceholders(m2.contenido, ctx),
@@ -184,16 +243,17 @@ async function buildReading({ user, tirada, tema, perfil_tono }) {
   return {
     ok: true,
     tema: context,
-    perfil_tono: tone,
+    perfil_tono: profile,
     lectura: text,
     debug: {
       cards: {
-        pasado: { ...cards.pasado, polaridad: p1 },
-        presente: { ...cards.presente, polaridad: p2 },
-        futuro: { ...cards.futuro, polaridad: p3 }
+        pasado: { ...cards.pasado, polaridad: messagePolarityFromOrientation(cards.pasado.orientation), sentido: s1 },
+        presente: { ...cards.presente, polaridad: messagePolarityFromOrientation(cards.presente.orientation), sentido: s2 },
+        futuro: { ...cards.futuro, polaridad: messagePolarityFromOrientation(cards.futuro.orientation), sentido: s3 }
       },
       message_ids: { pasado: m1.id, presente: m2.id, futuro: m3.id },
       connector_ids: {
+        intro: intro ? intro.id : null,
         pasado_presente: conn12 ? conn12.id : null,
         presente_futuro: conn23 ? conn23.id : null,
         cierre: cierre ? cierre.id : null

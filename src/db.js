@@ -70,6 +70,49 @@ async function initDb() {
     ADD COLUMN IF NOT EXISTS significado_salud_luz TEXT NOT NULL DEFAULT '',
     ADD COLUMN IF NOT EXISTS significado_salud_sombra TEXT NOT NULL DEFAULT '',
     ADD COLUMN IF NOT EXISTS extra JSONB NOT NULL DEFAULT '{}'::jsonb;
+
+    ALTER TABLE IF EXISTS "MajorArcana"
+    ADD COLUMN IF NOT EXISTS "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    ADD COLUMN IF NOT EXISTS "deletedAt" TIMESTAMPTZ;
+  `);
+
+  await sequelize.query(`
+    CREATE TABLE IF NOT EXISTS "MinorArcana" (
+      id SERIAL PRIMARY KEY,
+      numero INTEGER NOT NULL,
+      palo TEXT NOT NULL DEFAULT '',
+      valor TEXT NOT NULL DEFAULT '',
+      nombre TEXT NOT NULL DEFAULT '',
+      significado_luz TEXT NOT NULL DEFAULT '',
+      significado_sombra TEXT NOT NULL DEFAULT '',
+      descripcion_visual TEXT NOT NULL DEFAULT '',
+      palabras_clave TEXT NOT NULL DEFAULT '',
+      imagen_url TEXT NOT NULL DEFAULT '',
+      imagen_thumb_url TEXT NOT NULL DEFAULT '',
+      extra JSONB NOT NULL DEFAULT '{}'::jsonb,
+      "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      "deletedAt" TIMESTAMPTZ
+    );
+
+    ALTER TABLE IF EXISTS "MinorArcana"
+    ADD COLUMN IF NOT EXISTS palo TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS valor TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS significado_luz TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS significado_sombra TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS descripcion_visual TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS palabras_clave TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS imagen_thumb_url TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS extra JSONB NOT NULL DEFAULT '{}'::jsonb,
+    ADD COLUMN IF NOT EXISTS "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    ADD COLUMN IF NOT EXISTS "deletedAt" TIMESTAMPTZ;
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_minor_arcana_numero
+      ON "MinorArcana" (numero);
+    CREATE INDEX IF NOT EXISTS idx_minor_arcana_palo_valor
+      ON "MinorArcana" (palo, valor);
   `);
 
   await sequelize.query(`
@@ -77,11 +120,23 @@ async function initDb() {
       id SERIAL PRIMARY KEY,
       tipo TEXT NOT NULL,
       polaridad TEXT NOT NULL,
-      texto TEXT NOT NULL
+      perfil TEXT NOT NULL DEFAULT 'general',
+      texto TEXT NOT NULL,
+      peso INTEGER NOT NULL DEFAULT 1,
+      "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      "deletedAt" TIMESTAMPTZ
     );
 
-    CREATE INDEX IF NOT EXISTS idx_connectores_tipo_polaridad
-      ON connectores (tipo, polaridad);
+    ALTER TABLE IF EXISTS connectores
+    ADD COLUMN IF NOT EXISTS perfil TEXT NOT NULL DEFAULT 'general',
+    ADD COLUMN IF NOT EXISTS peso INTEGER NOT NULL DEFAULT 1,
+    ADD COLUMN IF NOT EXISTS "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    ADD COLUMN IF NOT EXISTS "deletedAt" TIMESTAMPTZ;
+
+    CREATE INDEX IF NOT EXISTS idx_connectores_lookup
+      ON connectores (tipo, polaridad, perfil);
 
     CREATE TABLE IF NOT EXISTS mensajes_arcanos (
       id SERIAL PRIMARY KEY,
@@ -89,11 +144,82 @@ async function initDb() {
       posicion TEXT NOT NULL,
       contexto TEXT NOT NULL,
       perfil_tono TEXT NOT NULL,
-      contenido TEXT NOT NULL
+      contenido TEXT NOT NULL,
+      polaridad TEXT NOT NULL DEFAULT 'neutra',
+      sentido TEXT NOT NULL DEFAULT 'neutro',
+      luz_sombra TEXT NOT NULL DEFAULT 'neutra',
+      "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      "deletedAt" TIMESTAMPTZ
     );
+
+    ALTER TABLE IF EXISTS mensajes_arcanos
+    ADD COLUMN IF NOT EXISTS polaridad TEXT NOT NULL DEFAULT 'neutra',
+    ADD COLUMN IF NOT EXISTS sentido TEXT NOT NULL DEFAULT 'neutro',
+    ADD COLUMN IF NOT EXISTS luz_sombra TEXT NOT NULL DEFAULT 'neutra',
+    ADD COLUMN IF NOT EXISTS "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    ADD COLUMN IF NOT EXISTS "deletedAt" TIMESTAMPTZ;
+
+    UPDATE mensajes_arcanos
+      SET polaridad = 'favorable'
+      WHERE polaridad IN ('positivo', 'positiva');
+    UPDATE mensajes_arcanos
+      SET polaridad = 'desafiante'
+      WHERE polaridad IN ('negativo', 'negativa');
+    UPDATE mensajes_arcanos
+      SET polaridad = 'neutra'
+      WHERE polaridad IN ('neutro', 'neutra', 'neutral');
+    UPDATE mensajes_arcanos
+      SET sentido = 'invertido'
+      WHERE sentido IN ('invertida');
+    UPDATE mensajes_arcanos
+      SET sentido = 'neutro'
+      WHERE sentido IN ('neutra');
+    UPDATE mensajes_arcanos
+      SET luz_sombra = 'neutra'
+      WHERE luz_sombra IS NULL OR luz_sombra = '' OR luz_sombra IN ('neutro', 'neutral');
 
     CREATE INDEX IF NOT EXISTS idx_mensajes_arcanos_lookup
       ON mensajes_arcanos (arcano_id, posicion, contexto, perfil_tono);
+    CREATE INDEX IF NOT EXISTS idx_mensajes_arcanos_lookup_v2
+      ON mensajes_arcanos (arcano_id, posicion, contexto, perfil_tono, polaridad, sentido);
+    CREATE INDEX IF NOT EXISTS idx_mensajes_arcanos_lookup_v3
+      ON mensajes_arcanos (arcano_id, posicion, contexto, perfil_tono, polaridad, sentido, luz_sombra);
+
+    CREATE TABLE IF NOT EXISTS gemini_generations (
+      id SERIAL PRIMARY KEY,
+      model TEXT NOT NULL DEFAULT '',
+      tema TEXT NOT NULL DEFAULT '',
+      pregunta TEXT NOT NULL DEFAULT '',
+      user_profile JSONB NOT NULL DEFAULT '{}'::jsonb,
+      request_payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+      response_text TEXT NOT NULL DEFAULT '',
+      response_raw JSONB NOT NULL DEFAULT '{}'::jsonb,
+      status TEXT NOT NULL DEFAULT 'ok',
+      error TEXT NOT NULL DEFAULT '',
+      fingerprint TEXT NOT NULL DEFAULT '',
+      "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      "deletedAt" TIMESTAMPTZ
+    );
+    CREATE INDEX IF NOT EXISTS idx_gemini_generations_model ON gemini_generations (model);
+    CREATE INDEX IF NOT EXISTS idx_gemini_generations_tema ON gemini_generations (tema);
+    CREATE INDEX IF NOT EXISTS idx_gemini_generations_fingerprint ON gemini_generations (fingerprint);
+
+    CREATE TABLE IF NOT EXISTS gemini_templates (
+      id SERIAL PRIMARY KEY,
+      tema TEXT NOT NULL DEFAULT 'general',
+      tags TEXT NOT NULL DEFAULT '',
+      contenido TEXT NOT NULL DEFAULT '',
+      source TEXT NOT NULL DEFAULT 'gemini',
+      approved BOOLEAN NOT NULL DEFAULT false,
+      "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      "deletedAt" TIMESTAMPTZ
+    );
+    CREATE INDEX IF NOT EXISTS idx_gemini_templates_tema ON gemini_templates (tema);
+    CREATE INDEX IF NOT EXISTS idx_gemini_templates_approved ON gemini_templates (approved);
   `);
 
   await sequelize.sync();
@@ -102,4 +228,5 @@ async function initDb() {
 module.exports = { initDb };
 Object.defineProperty(module.exports, "sequelize", { get: () => sequelize });
 Object.defineProperty(module.exports, "MajorArcana", { get: () => models.MajorArcana });
+Object.defineProperty(module.exports, "MinorArcana", { get: () => models.MinorArcana });
 Object.defineProperty(module.exports, "models", { get: () => models });

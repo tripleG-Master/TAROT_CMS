@@ -1,0 +1,55 @@
+<main class="container py-4">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+      <h1 class="h3 brand mb-1">Importar Arcanos Menores</h1>
+      <div class="muted">Upsert por número. Soporta JSON y CSV/TSV.</div>
+    </div>
+    <a class="btn btn-outline-light" href="/menores">Volver</a>
+  </div>
+
+  {{#if result}}
+    <div class="alert alert-success">
+      Importación lista: {{result.created}} creados, {{result.updated}} actualizados, {{result.skipped}} omitidos.
+    </div>
+  {{/if}}
+
+  {{#if error}}
+    <div class="alert alert-danger">{{error}}</div>
+  {{/if}}
+
+  <div class="card p-4">
+    <div class="row g-4">
+      <div class="col-12">
+        <div class="fw-semibold mb-1">JSON</div>
+        <form method="POST" action="/menores/import">
+          <textarea name="json" rows="12" class="form-control" spellcheck="false" placeholder='[{"numero":0,"palo":"bastos","valor":"as","nombre":"As de Bastos",...}]'>{{json}}</textarea>
+          <div class="d-flex align-items-center justify-content-end gap-2 mt-2">
+            <button class="btn btn-mystic text-dark fw-semibold" type="submit">Importar JSON</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="col-12">
+        <div class="fw-semibold mb-1">CSV / TSV</div>
+        <form method="POST" action="/menores/import/csv">
+          <div class="muted mb-2">Header sugerido: numero;palo;valor;nombre;palabras_clave;significado_luz;significado_sombra;descripcion_visual;imagen_url</div>
+          <textarea name="csv" rows="8" class="form-control" spellcheck="false" placeholder="numero;palo;valor;nombre&#10;0;bastos;as;As de Bastos">{{csv}}</textarea>
+          <div class="d-flex align-items-center justify-content-end gap-2 mt-2">
+            <button class="btn btn-mystic text-dark fw-semibold" type="submit">Importar CSV</button>
+          </div>
+        </form>
+        <form method="POST" action="/menores/import/csv/file" enctype="multipart/form-data" class="mt-3">
+          <div class="row g-2 align-items-end">
+            <div class="col-md-9">
+              <label class="form-label">Subir archivo CSV/TSV</label>
+              <input class="form-control" type="file" name="csv_file" accept=".csv,.tsv,text/csv,text/tab-separated-values" />
+            </div>
+            <div class="col-md-3 d-grid">
+              <button class="btn btn-mystic text-dark fw-semibold" type="submit">Subir e importar</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</main>

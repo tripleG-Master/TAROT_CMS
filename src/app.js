@@ -6,6 +6,7 @@ const morgan = require("morgan");
 
 
 const majorArcanaRoutes = require("./routes/majorArcanaRoutes");
+const minorArcanaRoutes = require("./routes/minorArcanaRoutes");
 const zodiacRoutes = require("./routes/zodiacRoutes");
 const tarotRoutes = require("./routes/tarotRoutes");
 const apiRoutes = require("./routes/apiRoutes");
@@ -24,7 +25,14 @@ function createApp() {
       layoutsDir: path.join(viewsDir, "layouts"),
       partialsDir: path.join(viewsDir, "partials"),
       helpers: {
-        eq: (a, b) => a === b
+        eq: (a, b) => a === b,
+        json: (v) => {
+          try {
+            return JSON.stringify(v, null, 2);
+          } catch {
+            return "";
+          }
+        }
       }
     })
   );
@@ -42,6 +50,7 @@ function createApp() {
 
   app.get("/", (req, res) => res.redirect("/arcanos"));
   app.use("/arcanos", majorArcanaRoutes);
+  app.use("/menores", minorArcanaRoutes);
   app.use("/zodiac", zodiacRoutes);
   app.use("/tarot", tarotRoutes);
   app.use("/api", requireApiToken, apiRoutes);

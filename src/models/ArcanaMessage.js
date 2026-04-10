@@ -10,38 +10,58 @@ module.exports = function defineArcanaMessage(sequelize, DataTypes) {
       },
       arcano_id: {
         type: DataTypes.INTEGER,
-        allowNull: false,
-        references: {
-          model: 'major_arcana',
-          key: "id"
-        }
+        allowNull: false
       },
       posicion: {
-        type: DataTypes.ENUM("pasado", "presente", "futuro"),
+        type: DataTypes.TEXT,
         allowNull: false
       },
       contexto: {
-        type: DataTypes.ENUM("general", "amor", "salud", "dinero"),
+        type: DataTypes.TEXT,
         allowNull: false
       },
       perfil_tono: {
-        type: DataTypes.ENUM("empatico", "directo", "mistico","general"),
+        type: DataTypes.TEXT,
         defaultValue: "general",
         allowNull: false
       },
       contenido: {
         type: DataTypes.TEXT,
         allowNull: false
+      },
+      polaridad: {
+        type: DataTypes.TEXT,
+        allowNull: false,
+        defaultValue: "neutra"
+      },
+      sentido: {
+        type: DataTypes.TEXT,
+        allowNull: false,
+        defaultValue: "neutro"
+      },
+      luz_sombra: {
+        type: DataTypes.TEXT,
+        allowNull: false,
+        defaultValue: "neutra"
       }
     },
     {
       tableName: "mensajes_arcanos",
       freezeTableName: true,
-      timestamps: false,
+      timestamps: true,
+      paranoid: true,
       indexes: [
         {
           name: "idx_mensajes_arcanos_lookup",
           fields: ["arcano_id", "posicion", "contexto", "perfil_tono"]
+        },
+        {
+          name: "idx_mensajes_arcanos_lookup_v2",
+          fields: ["arcano_id", "posicion", "contexto", "perfil_tono", "polaridad", "sentido"]
+        },
+        {
+          name: "idx_mensajes_arcanos_lookup_v3",
+          fields: ["arcano_id", "posicion", "contexto", "perfil_tono", "polaridad", "sentido", "luz_sombra"]
         }
       ]
     }

@@ -24,18 +24,20 @@ async function showConnectors(req, res, next) {
   try {
     const tipo = String(req.query?.tipo || "").trim();
     const polaridad = String(req.query?.polaridad || "").trim();
+    const perfil = String(req.query?.perfil || "").trim();
     const where = {};
     if (tipo) where.tipo = tipo;
     if (polaridad) where.polaridad = polaridad;
+    if (perfil) where.perfil = perfil;
     const rows = await db.models.Connector.findAll({
       where,
-      order: [["tipo", "ASC"], ["polaridad", "ASC"], ["id", "ASC"]],
+      order: [["tipo", "ASC"], ["polaridad", "ASC"], ["perfil", "ASC"], ["peso", "DESC"], ["id", "ASC"]],
       raw: true
     });
     res.render("narrative/connectors", {
       title: "Conectores",
       rows,
-      filters: { tipo, polaridad }
+      filters: { tipo, polaridad, perfil }
     });
   } catch (err) {
     next(err);
@@ -48,20 +50,43 @@ async function showMessages(req, res, next) {
     const posicion = String(req.query?.posicion || "").trim();
     const contexto = String(req.query?.contexto || "").trim();
     const perfil_tono = String(req.query?.perfil_tono || "").trim();
+    const polaridad = String(req.query?.polaridad || "").trim();
+    const sentido = String(req.query?.sentido || "").trim();
+    const luz_sombra = String(req.query?.luz_sombra || "").trim();
     const where = {};
     if (Number.isInteger(arcano_id)) where.arcano_id = arcano_id;
     if (posicion) where.posicion = posicion;
     if (contexto) where.contexto = contexto;
     if (perfil_tono) where.perfil_tono = perfil_tono;
+    if (polaridad) where.polaridad = polaridad;
+    if (sentido) where.sentido = sentido;
+    if (luz_sombra) where.luz_sombra = luz_sombra;
     const rows = await db.models.ArcanaMessage.findAll({
       where,
-      order: [["arcano_id", "ASC"], ["posicion", "ASC"], ["contexto", "ASC"], ["perfil_tono", "ASC"], ["id", "ASC"]],
+      order: [
+        ["arcano_id", "ASC"],
+        ["posicion", "ASC"],
+        ["contexto", "ASC"],
+        ["perfil_tono", "ASC"],
+        ["polaridad", "ASC"],
+        ["sentido", "ASC"],
+        ["luz_sombra", "ASC"],
+        ["id", "ASC"]
+      ],
       raw: true
     });
     res.render("narrative/messages", {
       title: "Mensajes",
       rows,
-      filters: { arcano_id: Number.isInteger(arcano_id) ? arcano_id : "", posicion, contexto, perfil_tono }
+      filters: {
+        arcano_id: Number.isInteger(arcano_id) ? arcano_id : "",
+        posicion,
+        contexto,
+        perfil_tono,
+        polaridad,
+        sentido,
+        luz_sombra
+      }
     });
   } catch (err) {
     next(err);

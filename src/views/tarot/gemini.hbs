@@ -1,0 +1,230 @@
+<main class="container py-4">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+      <h1 class="h3 brand mb-1">Gemini (Prueba)</h1>
+      <div class="muted">Prueba generación de texto con Gemini desde el CMS.</div>
+    </div>
+    <a class="btn btn-outline-light" href="/arcanos">Volver</a>
+  </div>
+
+  <div class="card p-4">
+    <form id="geminiForm" class="row g-3">
+      <div class="col-12">
+        <div class="fw-semibold mb-1">1) Configuración + Preprompt</div>
+        <div class="muted">Define el modelo y parámetros. El preprompt (system) fija el rol/estilo del asistente.</div>
+      </div>
+
+      <div class="col-md-4">
+        <label class="form-label">Modelo</label>
+        <input id="model" class="form-control" placeholder="gemini-1.5-flash" />
+        <div class="muted mt-1">Ej: gemini-1.5-flash. No uses prefijo models/.</div>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Temperature</label>
+        <input id="temperature" class="form-control" placeholder="0.7" />
+        <div class="muted mt-1">Creatividad (0 = más literal).</div>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Max tokens</label>
+        <input id="maxOutputTokens" class="form-control" placeholder="512" />
+        <div class="muted mt-1">Largo máximo de salida.</div>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Top P</label>
+        <input id="topP" class="form-control" placeholder="0.95" />
+        <div class="muted mt-1">Diversidad (probabilidad).</div>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Top K</label>
+        <input id="topK" class="form-control" placeholder="40" />
+        <div class="muted mt-1">Diversidad (candidatos).</div>
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label">API Token</label>
+        <input id="apiToken" class="form-control" type="password" placeholder="Bearer..." />
+        <div class="muted mt-1">Token del CMS para poder llamar endpoints /api.</div>
+      </div>
+      <div class="col-md-3 d-flex align-items-end">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="includeRaw" />
+          <label class="form-check-label" for="includeRaw">Incluir raw</label>
+        </div>
+      </div>
+      <div class="col-md-3 d-flex align-items-end">
+        <button class="btn btn-mystic text-dark fw-semibold w-100" type="submit">Generar</button>
+      </div>
+
+      <div class="col-12">
+        <label class="form-label">System / Preprompt (opcional)</label>
+        <textarea id="system" class="form-control" rows="4" spellcheck="false" placeholder="Rol y reglas del asistente. Si quieres, puedes pegar el contenido de prompts/gemini_tarot_preprompt.md"></textarea>
+        <div class="muted mt-1">Este campo corresponde al system instruction del modelo. En la lectura de tarot usamos un preprompt por defecto desde el markdown, pero aquí puedes probarlo manualmente.</div>
+      </div>
+
+      <div class="col-12">
+        <hr class="border-secondary my-2" />
+      </div>
+
+      <div class="col-12">
+        <div class="fw-semibold mb-1">2) Prompt</div>
+        <div class="muted">Lo que le pides al modelo. Aquí va tu instrucción concreta.</div>
+      </div>
+
+      <div class="col-12">
+        <label class="form-label">Prompt</label>
+        <textarea id="prompt" class="form-control" rows="6" spellcheck="false" required placeholder="Escribe aquí..."></textarea>
+      </div>
+
+      <div class="col-12 d-flex justify-content-end">
+        <button class="btn btn-outline-light" type="button" id="listModelsBtn">Listar modelos disponibles</button>
+      </div>
+    </form>
+
+    <hr class="border-secondary my-3" />
+
+    <div id="geminiError" class="alert alert-danger d-none"></div>
+    <div id="geminiOk" class="d-none">
+      <div class="fw-semibold mb-1">3) Salida + JSON</div>
+      <div class="muted mb-2">Texto final (respuesta) y payload completo para debug.</div>
+      <div class="fw-semibold mb-2">Respuesta</div>
+      <textarea id="geminiText" class="form-control" rows="8" spellcheck="false" readonly></textarea>
+      <div class="fw-semibold mt-3 mb-2">Uso (tokens / longitudes)</div>
+      <textarea id="geminiUsage" class="form-control" rows="6" spellcheck="false" readonly></textarea>
+      <div class="fw-semibold mt-3 mb-2">JSON</div>
+      <textarea id="geminiJson" class="form-control" rows="12" spellcheck="false" readonly></textarea>
+    </div>
+  </div>
+</main>
+
+<script>
+  (function () {
+    const storedToken = localStorage.getItem("tarotCmsApiToken") || "";
+
+    const form = document.getElementById("geminiForm");
+    const apiToken = document.getElementById("apiToken");
+    const model = document.getElementById("model");
+    const temperature = document.getElementById("temperature");
+    const maxOutputTokens = document.getElementById("maxOutputTokens");
+    const topP = document.getElementById("topP");
+    const topK = document.getElementById("topK");
+    const system = document.getElementById("system");
+    const prompt = document.getElementById("prompt");
+    const includeRaw = document.getElementById("includeRaw");
+    const listModelsBtn = document.getElementById("listModelsBtn");
+
+    const error = document.getElementById("geminiError");
+    const ok = document.getElementById("geminiOk");
+    const textOut = document.getElementById("geminiText");
+    const jsonOut = document.getElementById("geminiJson");
+    const usageOut = document.getElementById("geminiUsage");
+
+    if (storedToken) apiToken.value = storedToken;
+
+    function showError(message) {
+      error.textContent = message || "Error inesperado";
+      error.classList.remove("d-none");
+      ok.classList.add("d-none");
+    }
+
+    function showOk(data) {
+      if (data && typeof data.text === "string" && data.text.trim()) {
+        textOut.value = data.text;
+      } else if (data && Array.isArray(data.models)) {
+        const names = data.models
+          .map((m) => String(m && m.name ? m.name : "").trim())
+          .filter(Boolean)
+          .slice(0, 50);
+        textOut.value = names.length > 0 ? names.join("\n") : "";
+      } else {
+        textOut.value = "";
+      }
+      if (usageOut) {
+        const u = data && data.usage ? data.usage : null;
+        if (u) {
+          const t = u.tokens || {};
+          const l = u.lengths || {};
+          const meta = u.usageMetadata || null;
+          const finishReason = u.finishReason || null;
+          const safety = Array.isArray(u.safetyRatings) ? u.safetyRatings : null;
+          usageOut.value = [
+            `tokens.prompt: ${t.prompt ?? "n/d"}`,
+            `tokens.output: ${t.output ?? "n/d"}`,
+            `tokens.total: ${t.total ?? "n/d"}`,
+            `finishReason: ${finishReason ?? "n/d"}`,
+            `prompt: ${l.promptChars ?? "n/d"} chars · ${l.promptWords ?? "n/d"} palabras`,
+            `system: ${l.systemChars ?? "n/d"} chars · ${l.systemWords ?? "n/d"} palabras`,
+            `output: ${l.outputChars ?? "n/d"} chars · ${l.outputWords ?? "n/d"} palabras`,
+            safety ? ("safetyRatings: " + JSON.stringify(safety)) : "safetyRatings: n/d",
+            "",
+            "usageMetadata:",
+            meta ? JSON.stringify(meta, null, 2) : "n/d"
+          ].join("\\n");
+        } else {
+          usageOut.value = "";
+        }
+      }
+      jsonOut.value = JSON.stringify(data, null, 2);
+      ok.classList.remove("d-none");
+      error.classList.add("d-none");
+    }
+
+    function buildHeaders() {
+      const token = apiToken.value || "";
+      localStorage.setItem("tarotCmsApiToken", token);
+      const h = { "Accept": "application/json", "Content-Type": "application/json" };
+      if (token) h["Authorization"] = "Bearer " + token;
+      return h;
+    }
+
+    function parseOptionalNumber(input) {
+      const raw = String(input || "").trim();
+      if (!raw) return undefined;
+      const n = Number(raw);
+      return Number.isFinite(n) ? n : undefined;
+    }
+
+    form.addEventListener("submit", async function (e) {
+      e.preventDefault();
+
+      const p = String(prompt.value || "").trim();
+      if (!p) return;
+
+      const body = {
+        prompt: p,
+        system: String(system.value || ""),
+        model: String(model.value || ""),
+        temperature: parseOptionalNumber(temperature.value),
+        maxOutputTokens: parseOptionalNumber(maxOutputTokens.value),
+        topP: parseOptionalNumber(topP.value),
+        topK: parseOptionalNumber(topK.value),
+        includeRaw: includeRaw.checked === true
+      };
+
+      try {
+        const res = await fetch("/api/gemini/generate", {
+          method: "POST",
+          headers: buildHeaders(),
+          body: JSON.stringify(body)
+        });
+        const data = await res.json().catch(() => null);
+        if (res.status === 401) return showError("Unauthorized. Pega el API token para usar /api.");
+        if (!res.ok || !data || data.ok !== true) return showError((data && data.error) || ("HTTP " + res.status));
+        showOk(data);
+      } catch (err) {
+        showError(err && err.message ? err.message : "Error de red");
+      }
+    });
+
+    listModelsBtn.addEventListener("click", async function () {
+      try {
+        const res = await fetch("/api/gemini/models", { method: "GET", headers: buildHeaders() });
+        const data = await res.json().catch(() => null);
+        if (res.status === 401) return showError("Unauthorized. Pega el API token para usar /api.");
+        if (!res.ok || !data || data.ok !== true) return showError((data && data.error) || ("HTTP " + res.status));
+        showOk(data);
+      } catch (err) {
+        showError(err && err.message ? err.message : "Error de red");
+      }
+    });
+  })();
+</script>

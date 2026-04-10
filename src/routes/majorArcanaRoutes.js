@@ -29,6 +29,9 @@ router.post("/import/connectors/csv/file", uploadCsv.single("conn_csv_file"), co
 router.post("/import/messages", controller.importArcanaMessagesJson);
 router.post("/import/messages/csv", controller.importArcanaMessagesCsv);
 router.post("/import/messages/csv/file", uploadCsv.single("msg_csv_file"), controller.importArcanaMessagesCsvFile);
+router.post("/import/messages/csv/wide", controller.importArcanaMessagesCsvWide);
+router.post("/import/messages/csv/wide/file", uploadCsv.single("msg_csv_wide_file"), controller.importArcanaMessagesCsvWideFile);
+router.post("/messages/delete-all", controller.deleteAllArcanaMessages);
 router.post("/import/local", controller.importLocal);
 router.get("/export/arcanos.json", controller.exportJson);
 router.get("/export/v2/arcanos.json", controller.exportJsonV2);

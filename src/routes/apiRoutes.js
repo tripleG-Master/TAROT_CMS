@@ -1,5 +1,6 @@
 const express = require("express");
 const majorArcanaController = require("../controllers/majorArcanaController");
+const geminiController = require("../controllers/geminiController");
 const narrativeController = require("../controllers/narrativeController");
 const registerController = require("../controllers/registerController");
 const zodiacRoutes = require("./zodiacRoutes");
@@ -11,9 +12,13 @@ router.use("/health", healthRoutes);
 router.use("/zodiac", zodiacRoutes);
 router.post("/register", registerController.register);
 
-
 router.post("/narrative/seed", narrativeController.seed);
 router.post("/narrative/three-cards", narrativeController.threeCards);
+router.get("/gemini/models", geminiController.listModels);
+router.post("/gemini/generate", geminiController.generate);
+router.post("/gemini/tarot-reading", geminiController.tarotReading);
+router.post("/gemini/generations/:id/promote", geminiController.promoteGeneration);
+router.post("/gemini/templates/:id/approve", geminiController.approveTemplate);
 
 router.get("/arcanos/export/arcanos.json", majorArcanaController.exportJson);
 router.get("/arcanos/export/v2/arcanos.json", majorArcanaController.exportJsonV2);

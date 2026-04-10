@@ -30,7 +30,7 @@
         <input id="birthdate" name="birthdate" type="date" class="form-control" />
       </div>
 
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label class="form-label">Tema</label>
         <select id="tema" name="tema" class="form-select">
           <option value="amor">Amor</option>
@@ -39,24 +39,48 @@
           <option value="general" selected>General</option>
         </select>
       </div>
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label class="form-label">Tono</label>
         <select id="tono" name="tono" class="form-select">
           <option value="" selected>Auto</option>
-          <option value="empático">Empático</option>
+          <option value="general">General</option>
+          <option value="empatico">Empático</option>
           <option value="directo">Directo</option>
-          <option value="místico">Místico</option>
+          <option value="mistico">Místico</option>
         </select>
       </div>
-      <div class="col-md-4">
+      <div class="col-md-3">
+        <label class="form-label">Tipo lectura (Gemini)</label>
+        <select id="readingMode" class="form-select">
+          <option value="free" selected>Tarot Free (breve)</option>
+          <option value="premium">Tarot Premium (amplia)</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Fuente cartas (según modo)</label>
+        <select id="cardSource" class="form-select" disabled>
+          <option value="meanings" selected>Significados (arcanos)</option>
+          <option value="messages">ArcanaMessages (mensajes)</option>
+        </select>
+      </div>
+      <div class="col-md-3">
         <label class="form-label">API Token</label>
         <input id="apiToken" name="apiToken" type="password" class="form-control" placeholder="Bearer..." />
+      </div>
+
+      <div class="col-12">
+        <label class="form-label">Pregunta (opcional)</label>
+        <textarea id="question" name="question" class="form-control" rows="2" spellcheck="false" placeholder="¿Qué debería saber sobre...?"></textarea>
       </div>
 
       <div class="col-12">
         <hr class="border-secondary my-2" />
         <div class="fw-semibold">Tirada</div>
         <div class="muted">Selecciona 3 cartas y su orientación.</div>
+      </div>
+
+      <div class="col-12 d-flex justify-content-end">
+        <button class="btn btn-outline-light" type="button" id="randomCardsBtn">Cartas aleatorias</button>
       </div>
 
       <div class="col-md-4">
@@ -98,20 +122,51 @@
         </select>
       </div>
 
-      <div class="col-12 d-flex gap-2">
-        <button class="btn btn-mystic text-dark fw-semibold flex-grow-1" type="submit">Generar lectura</button>
+      <div class="col-12">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="includePrompt" checked />
+          <label class="form-check-label" for="includePrompt">Incluir system + prompt (para ver exactamente qué se envía)</label>
+        </div>
+      </div>
+
+      <div class="col-12 d-flex gap-2 flex-wrap">
+        <button class="btn btn-mystic text-dark fw-semibold flex-grow-1" type="submit" value="narrative" name="engine">Motor de Narrativa</button>
+        <button class="btn btn-outline-info flex-grow-1" type="submit" value="gemini" name="engine">Gemini</button>
         <button class="btn btn-outline-secondary" type="button" id="seedBtn">Seed narrativa</button>
       </div>
     </form>
 
     <hr class="border-secondary my-3" />
 
+    <div id="geminiLoading" class="alert alert-info d-none">
+      <div class="d-flex align-items-center gap-2">
+        <div class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></div>
+        <div>Generando lectura con Gemini…</div>
+      </div>
+    </div>
+
     <div id="readingError" class="alert alert-danger d-none"></div>
     <div id="readingOk" class="d-none">
       <div class="fw-semibold mb-2">Lectura</div>
       <textarea id="readingText" class="form-control" rows="8" spellcheck="false" readonly></textarea>
 
-      <div class="fw-semibold mt-3 mb-2">Debug</div>
+      <div class="fw-semibold mt-3 mb-2">Request (enviado)</div>
+      <textarea id="readingRequest" class="form-control" rows="10" spellcheck="false" readonly></textarea>
+
+      <div class="fw-semibold mt-3 mb-2">System (preprompt final)</div>
+      <textarea id="readingSystem" class="form-control" rows="8" spellcheck="false" readonly></textarea>
+
+      <div class="fw-semibold mt-3 mb-2">Prompt (incluye contexto)</div>
+      <textarea id="readingPrompt" class="form-control" rows="10" spellcheck="false" readonly></textarea>
+      <div class="muted mt-1">Tip: el bloque CONTEXTO (JSON) está al final del prompt. Desplázate hacia abajo.</div>
+
+      <div class="fw-semibold mt-3 mb-2">Contexto (servidor)</div>
+      <textarea id="readingContext" class="form-control" rows="10" spellcheck="false" readonly></textarea>
+
+      <div class="fw-semibold mt-3 mb-2">Uso (tokens / longitudes)</div>
+      <textarea id="readingUsage" class="form-control" rows="6" spellcheck="false" readonly></textarea>
+
+      <div class="fw-semibold mt-3 mb-2">Debug (respuesta completa)</div>
       <textarea id="readingDebug" class="form-control" rows="10" spellcheck="false" readonly></textarea>
     </div>
   </div>
@@ -129,8 +184,12 @@
     const birthdateInput = document.getElementById("birthdate");
     const temaInput = document.getElementById("tema");
     const tonoInput = document.getElementById("tono");
+    const readingModeInput = document.getElementById("readingMode");
+    const cardSourceInput = document.getElementById("cardSource");
     const tokenInput = document.getElementById("apiToken");
+    const questionInput = document.getElementById("question");
 
+    const randomCardsBtn = document.getElementById("randomCardsBtn");
     const cardPast = document.getElementById("cardPast");
     const cardPresent = document.getElementById("cardPresent");
     const cardFuture = document.getElementById("cardFuture");
@@ -138,12 +197,34 @@
     const oriPresent = document.getElementById("oriPresent");
     const oriFuture = document.getElementById("oriFuture");
 
+    const geminiLoading = document.getElementById("geminiLoading");
     const error = document.getElementById("readingError");
     const ok = document.getElementById("readingOk");
     const readingText = document.getElementById("readingText");
+    const readingRequest = document.getElementById("readingRequest");
+    const readingSystem = document.getElementById("readingSystem");
+    const readingPrompt = document.getElementById("readingPrompt");
+    const readingContext = document.getElementById("readingContext");
+    const readingUsage = document.getElementById("readingUsage");
     const readingDebug = document.getElementById("readingDebug");
+    const includePrompt = document.getElementById("includePrompt");
 
     if (storedToken) tokenInput.value = storedToken;
+
+    function setLoading(isLoading, engine) {
+      const loading = isLoading === true;
+      const isGemini = engine === "gemini";
+      if (geminiLoading) {
+        if (loading && isGemini) geminiLoading.classList.remove("d-none");
+        else geminiLoading.classList.add("d-none");
+      }
+      const formControls = form.querySelectorAll("input, textarea, select, button");
+      formControls.forEach((el) => {
+        if (el && el.id === "seedBtn") return;
+        if (el && el.id === "randomCardsBtn") return;
+        if (el) el.disabled = loading;
+      });
+    }
 
     function headers() {
       const token = tokenInput.value || "";
@@ -159,11 +240,82 @@
       ok.classList.add("d-none");
     }
 
-    function showOk(payload) {
-      readingText.value = payload.lectura || "";
+    function showOk(payload, requestPayload) {
+      readingText.value = payload && typeof payload.text === "string" ? payload.text : (payload.lectura || "");
+      readingRequest.value = JSON.stringify(requestPayload || {}, null, 2);
+      readingSystem.value = payload && typeof payload.system === "string" ? payload.system : "";
+      readingPrompt.value = payload && typeof payload.prompt === "string" ? payload.prompt : "";
+      readingContext.value = payload && payload.context ? JSON.stringify(payload.context, null, 2) : "";
+      if (payload && payload.usage) {
+        const u = payload.usage;
+        const tokens = u.tokens || {};
+        const lengths = u.lengths || {};
+        const meta = u.usageMetadata || null;
+        const finishReason = u.finishReason || null;
+        const safety = Array.isArray(u.safetyRatings) ? u.safetyRatings : null;
+        const genCfg = u.generationConfig || null;
+        const lines = [
+          `tokens.prompt: ${tokens.prompt ?? "n/d"}`,
+          `tokens.output: ${tokens.output ?? "n/d"}`,
+          `tokens.total: ${tokens.total ?? "n/d"}`,
+          `finishReason: ${finishReason ?? "n/d"}`,
+          genCfg ? ("generationConfig: " + JSON.stringify(genCfg)) : "generationConfig: n/d",
+          `prompt: ${lengths.promptChars ?? "n/d"} chars · ${lengths.promptWords ?? "n/d"} palabras`,
+          `system: ${lengths.systemChars ?? "n/d"} chars · ${lengths.systemWords ?? "n/d"} palabras`,
+          `context: ${lengths.contextChars ?? "n/d"} chars · ${lengths.contextWords ?? "n/d"} palabras`,
+          `output: ${lengths.outputChars ?? "n/d"} chars · ${lengths.outputWords ?? "n/d"} palabras`,
+          safety ? ("safetyRatings: " + JSON.stringify(safety)) : "safetyRatings: n/d",
+          "",
+          "usageMetadata:",
+          meta ? JSON.stringify(meta, null, 2) : "n/d"
+        ].join("\n");
+        readingUsage.value = lines;
+      } else {
+        readingUsage.value = "";
+      }
       readingDebug.value = JSON.stringify(payload, null, 2);
       ok.classList.remove("d-none");
       error.classList.add("d-none");
+    }
+
+    function allArcanaValues() {
+      const opts = Array.from(cardPast.options || []);
+      return opts.map((o) => Number(o && o.value)).filter((n) => Number.isInteger(n));
+    }
+
+    function pickDistinct(arr, count) {
+      const pool = Array.from(new Set(arr));
+      const out = [];
+      while (pool.length > 0 && out.length < count) {
+        const idx = Math.floor(Math.random() * pool.length);
+        out.push(pool[idx]);
+        pool.splice(idx, 1);
+      }
+      return out;
+    }
+
+    function applyReadingMode(mode) {
+      const m = String(mode || "").trim().toLowerCase() === "premium" ? "premium" : "free";
+      if (m === "premium") cardSourceInput.value = "messages";
+      else cardSourceInput.value = "meanings";
+    }
+
+    if (readingModeInput) applyReadingMode(readingModeInput.value);
+    if (readingModeInput) {
+      readingModeInput.addEventListener("change", function () {
+        applyReadingMode(readingModeInput.value);
+      });
+    }
+
+    if (randomCardsBtn) {
+      randomCardsBtn.addEventListener("click", function () {
+        const values = allArcanaValues();
+        const picked = pickDistinct(values, 3);
+        if (picked.length !== 3) return;
+        cardPast.value = String(picked[0]);
+        cardPresent.value = String(picked[1]);
+        cardFuture.value = String(picked[2]);
+      });
     }
 
     seedBtn.addEventListener("click", async function () {
@@ -180,8 +332,11 @@
 
     form.addEventListener("submit", async function (e) {
       e.preventDefault();
+      let engine = "narrative";
 
       try {
+        engine = e.submitter && e.submitter.value ? e.submitter.value : "narrative";
+        setLoading(true, engine);
         const payload = {
           user_data: {
             nombre: nameInput.value || "",
@@ -190,6 +345,7 @@
           },
           tema: temaInput.value || "general",
           perfil_tono: tonoInput.value || "",
+          pregunta: questionInput.value || "",
           tirada: {
             cards: [
               { id: Number(cardPast.value), posicion: "pasado", orientacion: oriPast.value },
@@ -199,7 +355,16 @@
           }
         };
 
-        const res = await fetch("/api/narrative/three-cards", {
+        const url = engine === "gemini" ? "/api/gemini/tarot-reading" : "/api/narrative/three-cards";
+        if (engine === "gemini") {
+          payload.includeContext = true;
+          payload.includePrompt = includePrompt.checked === true;
+          payload.reading_mode = String(readingModeInput && readingModeInput.value ? readingModeInput.value : "free");
+          applyReadingMode(payload.reading_mode);
+          payload.card_source = String(cardSourceInput.value || "");
+        }
+
+        const res = await fetch(url, {
           method: "POST",
           headers: headers(),
           body: JSON.stringify(payload)
@@ -208,11 +373,12 @@
         const data = await res.json().catch(() => null);
         if (res.status === 401) return showError("Unauthorized. Pega el API token para usar /api.");
         if (!res.ok || !data || data.ok !== true) return showError((data && data.error) || ("HTTP " + res.status));
-        showOk(data);
+        showOk(data, payload);
       } catch (err) {
         showError(err && err.message ? err.message : "Error de red");
+      } finally {
+        setLoading(false, engine);
       }
     });
   })();
 </script>
-

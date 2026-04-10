@@ -9,11 +9,11 @@
 
   <div class="card p-4">
     <form method="GET" action="/tarot/mensajes" class="row g-3">
-      <div class="col-md-3">
+      <div class="col-md-2">
         <label class="form-label">Arcano ID</label>
         <input class="form-control" name="arcano_id" value="{{filters.arcano_id}}" placeholder="0–21" />
       </div>
-      <div class="col-md-3">
+      <div class="col-md-2">
         <label class="form-label">Posición</label>
         <select name="posicion" class="form-select">
           <option value="" {{#unless filters.posicion}}selected{{/unless}}>Todas</option>
@@ -22,7 +22,7 @@
           <option value="futuro" {{#if (eq filters.posicion "futuro")}}selected{{/if}}>futuro</option>
         </select>
       </div>
-      <div class="col-md-3">
+      <div class="col-md-2">
         <label class="form-label">Contexto</label>
         <select name="contexto" class="form-select">
           <option value="" {{#unless filters.contexto}}selected{{/unless}}>Todos</option>
@@ -32,13 +32,41 @@
           <option value="dinero" {{#if (eq filters.contexto "dinero")}}selected{{/if}}>dinero</option>
         </select>
       </div>
-      <div class="col-md-3">
+      <div class="col-md-2">
         <label class="form-label">Tono</label>
         <select name="perfil_tono" class="form-select">
           <option value="" {{#unless filters.perfil_tono}}selected{{/unless}}>Todos</option>
-          <option value="empático" {{#if (eq filters.perfil_tono "empático")}}selected{{/if}}>empático</option>
+          <option value="general" {{#if (eq filters.perfil_tono "general")}}selected{{/if}}>general</option>
+          <option value="empatico" {{#if (eq filters.perfil_tono "empatico")}}selected{{/if}}>empatico</option>
           <option value="directo" {{#if (eq filters.perfil_tono "directo")}}selected{{/if}}>directo</option>
-          <option value="místico" {{#if (eq filters.perfil_tono "místico")}}selected{{/if}}>místico</option>
+          <option value="mistico" {{#if (eq filters.perfil_tono "mistico")}}selected{{/if}}>mistico</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Polaridad</label>
+        <select name="polaridad" class="form-select">
+          <option value="" {{#unless filters.polaridad}}selected{{/unless}}>Todas</option>
+          <option value="favorable" {{#if (eq filters.polaridad "favorable")}}selected{{/if}}>favorable</option>
+          <option value="desafiante" {{#if (eq filters.polaridad "desafiante")}}selected{{/if}}>desafiante</option>
+          <option value="neutra" {{#if (eq filters.polaridad "neutra")}}selected{{/if}}>neutra</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Sentido</label>
+        <select name="sentido" class="form-select">
+          <option value="" {{#unless filters.sentido}}selected{{/unless}}>Todos</option>
+          <option value="derecho" {{#if (eq filters.sentido "derecho")}}selected{{/if}}>derecho</option>
+          <option value="invertido" {{#if (eq filters.sentido "invertido")}}selected{{/if}}>invertido</option>
+          <option value="neutro" {{#if (eq filters.sentido "neutro")}}selected{{/if}}>neutro</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Luz/Sombra</label>
+        <select name="luz_sombra" class="form-select">
+          <option value="" {{#unless filters.luz_sombra}}selected{{/unless}}>Todos</option>
+          <option value="luz" {{#if (eq filters.luz_sombra "luz")}}selected{{/if}}>luz</option>
+          <option value="sombra" {{#if (eq filters.luz_sombra "sombra")}}selected{{/if}}>sombra</option>
+          <option value="neutra" {{#if (eq filters.luz_sombra "neutra")}}selected{{/if}}>neutra</option>
         </select>
       </div>
       <div class="col-md-12 d-flex align-items-end">
@@ -56,6 +84,9 @@
             <th style="width: 110px;">Posición</th>
             <th style="width: 110px;">Contexto</th>
             <th style="width: 110px;">Tono</th>
+            <th style="width: 110px;">Polaridad</th>
+            <th style="width: 110px;">Sentido</th>
+            <th style="width: 110px;">Luz/Sombra</th>
             <th>Contenido</th>
           </tr>
         </thead>
@@ -66,12 +97,15 @@
               <td><span class="badge bg-dark">{{posicion}}</span></td>
               <td><span class="badge bg-info text-dark">{{contexto}}</span></td>
               <td><span class="badge bg-warning text-dark">{{perfil_tono}}</span></td>
+              <td><span class="badge bg-secondary">{{polaridad}}</span></td>
+              <td><span class="badge bg-dark">{{sentido}}</span></td>
+              <td><span class="badge bg-dark">{{luz_sombra}}</span></td>
               <td style="white-space: pre-wrap;">{{contenido}}</td>
             </tr>
           {{/each}}
           {{#unless rows}}
             <tr>
-              <td colspan="5" class="py-4"><div class="muted">No hay mensajes con estos filtros.</div></td>
+              <td colspan="8" class="py-4"><div class="muted">No hay mensajes con estos filtros.</div></td>
             </tr>
           {{/unless}}
         </tbody>

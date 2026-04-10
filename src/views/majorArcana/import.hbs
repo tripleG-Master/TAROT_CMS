@@ -2,113 +2,180 @@
   <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
     <div>
       <h1 class="h3 brand mb-1">Importar Arcanos</h1>
-      <div class="muted">Pega un JSON o CSV/TSV y el CMS hará upsert por número (0–21).</div>
+      <div class="muted">Selecciona una categoría y un formato. Cada sección incluye su propio import por JSON, CSV o archivo.</div>
     </div>
     <a class="btn btn-outline-light" href="/arcanos">Volver</a>
   </div>
 
-  {{#if result}}
-    <div class="alert alert-success">
-      Importación lista: {{result.created}} creados, {{result.updated}} actualizados, {{result.skipped}} omitidos.
+  <ul class="nav nav-tabs" role="tablist">
+    <li class="nav-item">
+      <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-arcanos" type="button" role="tab">Arcanos Mayores</button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-conectores" type="button" role="tab">Conectores</button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-mensajes" type="button" role="tab">Mensajes de Arcanos</button>
+    </li>
+  </ul>
+
+  <div class="tab-content mt-3">
+    <div class="tab-pane fade show active" id="tab-arcanos" role="tabpanel">
+      {{#if error}}
+        <div class="alert alert-danger mb-3">{{error}}</div>
+      {{/if}}
+      {{#if result}}
+        <div class="alert alert-success mb-3">
+          Importación lista: {{result.created}} creados, {{result.updated}} actualizados, {{result.skipped}} omitidos.
+        </div>
+      {{/if}}
+
+      <div class="card p-4">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+          <div class="muted">Atajo local</div>
+          <form method="POST" action="/arcanos/import/local" class="m-0">
+            <button class="btn btn-outline-info" type="submit">Importar data/arcanosMajores.json</button>
+          </form>
+        </div>
+        <div class="row g-4">
+          <div class="col-12">
+            <div class="fw-semibold mb-1">JSON</div>
+            <form method="POST" action="/arcanos/import">
+              <textarea name="json" rows="12" class="form-control" spellcheck="false" placeholder='[{"Número":"0","Nombre":"El Loco",...}]'>{{json}}</textarea>
+              <div class="d-flex align-items-center justify-content-end gap-2 mt-2">
+                <button class="btn btn-mystic text-dark fw-semibold" type="submit">Importar JSON</button>
+              </div>
+            </form>
+          </div>
+          <div class="col-12">
+            <div class="fw-semibold mb-1">CSV / TSV</div>
+            <form method="POST" action="/arcanos/import/csv">
+              <div class="muted mb-2">Soporta tab, coma o punto y coma. La primera fila es header.</div>
+              <textarea name="csv" rows="8" class="form-control" spellcheck="false" placeholder="nombre	numero	palabras_clave	...">{{csv}}</textarea>
+              <div class="d-flex align-items-center justify-content-end gap-2 mt-2">
+                <button class="btn btn-mystic text-dark fw-semibold" type="submit">Importar CSV</button>
+              </div>
+            </form>
+            <form method="POST" action="/arcanos/import/csv/file" enctype="multipart/form-data" class="mt-3">
+              <div class="row g-2 align-items-end">
+                <div class="col-md-9">
+                  <label class="form-label">Subir archivo CSV/TSV</label>
+                  <input class="form-control" type="file" name="csv_file" accept=".csv,.tsv,text/csv,text/tab-separated-values" />
+                </div>
+                <div class="col-md-3 d-grid">
+                  <button class="btn btn-mystic text-dark fw-semibold" type="submit">Subir e importar</button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
     </div>
-  {{/if}}
 
-  {{#if error}}
-    <div class="alert alert-danger">{{error}}</div>
-  {{/if}}
-
-  <div class="card p-4">
-    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-      <div class="muted">Atajo local</div>
-      <form method="POST" action="/arcanos/import/local" class="m-0">
-        <button class="btn btn-outline-info" type="submit">Importar data/arcanosMajores.json</button>
-      </form>
+    <div class="tab-pane fade" id="tab-conectores" role="tabpanel">
+      {{#if connectorsStatus}}
+        <div class="alert alert-success mb-3">{{connectorsStatus}}</div>
+      {{/if}}
+      <div class="card p-4">
+        <div class="muted mb-2">Estructura mínima: tipo, polaridad, perfil, peso, texto.</div>
+        <div class="row g-4">
+          <div class="col-12">
+            <div class="fw-semibold mb-1">JSON</div>
+            <form method="POST" action="/arcanos/import/connectors">
+              <textarea name="connectorsJson" rows="8" class="form-control" spellcheck="false" placeholder='[{"tipo":"pasado_presente","polaridad":"pos_neg","perfil":"general","peso":1,"texto":"A pesar de ... {nombre} ..."}]'>{{connectorsJson}}</textarea>
+              <div class="d-flex align-items-center justify-content-end gap-2 mt-2">
+                <button class="btn btn-outline-info" type="submit">Importar Conectores (JSON)</button>
+              </div>
+            </form>
+          </div>
+          <div class="col-12">
+            <div class="fw-semibold mb-1">CSV / TSV</div>
+            <form method="POST" action="/arcanos/import/connectors/csv">
+              <textarea name="connectorsCsv" rows="6" class="form-control" spellcheck="false" placeholder="tipo;polaridad;perfil;peso;texto&#10;pasado_presente;pos_neg;general;1;A pesar de ... {nombre} ...">{{connectorsCsv}}</textarea>
+              <div class="d-flex align-items-center justify-content-end gap-2 mt-2">
+                <button class="btn btn-outline-info" type="submit">Importar Conectores (CSV)</button>
+              </div>
+            </form>
+            <form method="POST" action="/arcanos/import/connectors/csv/file" enctype="multipart/form-data" class="mt-3">
+              <div class="row g-2 align-items-end">
+                <div class="col-md-9">
+                  <label class="form-label">Subir archivo CSV/TSV</label>
+                  <input class="form-control" type="file" name="conn_csv_file" accept=".csv,.tsv,text/csv,text/tab-separated-values" />
+                </div>
+                <div class="col-md-3 d-grid">
+                  <button class="btn btn-outline-info" type="submit">Subir e importar</button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
     </div>
-    <hr class="border-secondary my-3" />
-    <form method="POST" action="/arcanos/import">
-      <label class="form-label">JSON</label>
-      <textarea name="json" rows="18" class="form-control" spellcheck="false" placeholder='[{"Número":"0","Nombre":"El Loco",...}]'>{{json}}</textarea>
-      <div class="d-flex align-items-center justify-content-end gap-2 mt-3">
-        <button class="btn btn-mystic text-dark fw-semibold" type="submit">Importar</button>
-      </div>
-    </form>
 
-    <hr class="border-secondary my-4" />
-
-    <form method="POST" action="/arcanos/import/csv">
-      <label class="form-label">CSV / TSV</label>
-      <div class="muted mb-2">Soporta separador por tab (recomendado), coma o punto y coma. La primera fila debe ser el header.</div>
-      <textarea name="csv" rows="10" class="form-control" spellcheck="false" placeholder="nombre	numero	palabras_clave	...">{{csv}}</textarea>
-      <div class="d-flex align-items-center justify-content-end gap-2 mt-3">
-        <button class="btn btn-mystic text-dark fw-semibold" type="submit">Importar CSV</button>
+    <div class="tab-pane fade" id="tab-mensajes" role="tabpanel">
+      {{#if messagesStatus}}
+        <div class="alert alert-success mb-3">{{messagesStatus}}</div>
+      {{/if}}
+      <div class="card p-4">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+          <div class="muted">Las frases de cartas viven aquí. Usa JSON/CSV estándar o el CSV por columnas de tono.</div>
+          <form method="POST" action="/arcanos/messages/delete-all" class="m-0" onsubmit="return confirm('¿Eliminar TODOS los Arcana Messages? Esta acción es irreversible.');">
+            <button class="btn btn-outline-danger" type="submit">Borrar todos</button>
+          </form>
+        </div>
+        <div class="row g-4">
+          <div class="col-12">
+            <div class="fw-semibold mb-1">JSON</div>
+            <form method="POST" action="/arcanos/import/messages">
+              <textarea name="messagesJson" rows="8" class="form-control" spellcheck="false" placeholder='[{"arcano_id":0,"posicion":"pasado","contexto":"general","perfil_tono":"general","polaridad":"neutra","sentido":"neutro","luz_sombra":"neutra","contenido":"... {nombre} ..."}]'>{{messagesJson}}</textarea>
+              <div class="d-flex align-items-center justify-content-end gap-2 mt-2">
+                <button class="btn btn-outline-warning" type="submit">Importar Mensajes (JSON)</button>
+              </div>
+            </form>
+          </div>
+          <div class="col-12">
+            <div class="fw-semibold mb-1">CSV / TSV (estándar)</div>
+            <form method="POST" action="/arcanos/import/messages/csv">
+              <textarea name="messagesCsv" rows="6" class="form-control" spellcheck="false" placeholder="arcano_id;posicion;contexto;perfil_tono;polaridad;sentido;luz_sombra;contenido&#10;0;pasado;general;empatico;favorable;derecho;luz;Texto ...">{{messagesCsv}}</textarea>
+              <div class="d-flex align-items-center justify-content-end gap-2 mt-2">
+                <button class="btn btn-outline-warning" type="submit">Importar Mensajes (CSV)</button>
+              </div>
+            </form>
+            <form method="POST" action="/arcanos/import/messages/csv/file" enctype="multipart/form-data" class="mt-3">
+              <div class="row g-2 align-items-end">
+                <div class="col-md-9">
+                  <label class="form-label">Subir archivo CSV/TSV (estándar)</label>
+                  <input class="form-control" type="file" name="msg_csv_file" accept=".csv,.tsv,text/csv,text/tab-separated-values" />
+                </div>
+                <div class="col-md-3 d-grid">
+                  <button class="btn btn-outline-warning" type="submit">Subir e importar</button>
+                </div>
+              </div>
+            </form>
+          </div>
+          <div class="col-12">
+            <div class="fw-semibold mb-1">CSV / TSV (por columnas de tono)</div>
+            <div class="muted mb-2">Header: ID, ARCANO, CONTEXTO, POSICION, SENTIDO, POLARIDAD, LUZ_SOMBRA, GENERAL, EMPATICO, DIRECTO, MISTICO. ID se usa como número del arcano (MajorArcana.numero, 0–21) y se guarda en arcano_id. ARCANO es opcional (solo referencia). Crea un registro por columna con texto.</div>
+            <form method="POST" action="/arcanos/import/messages/csv/wide">
+              <textarea name="messagesCsvWide" rows="8" class="form-control" spellcheck="false" placeholder="ID;ARCANO;CONTEXTO;POSICION;SENTIDO;POLARIDAD;LUZ_SOMBRA;GENERAL;EMPATICO;DIRECTO;MISTICO&#10;1;El Loco;general;pasado;derecho;favorable;luz;Texto general...;Texto empatico...;;Texto mistico...">{{messagesCsvWide}}</textarea>
+              <div class="d-flex align-items-center justify-content-end gap-2 mt-2">
+                <button class="btn btn-outline-warning" type="submit">Importar Mensajes (CSV columnas)</button>
+              </div>
+            </form>
+            <form method="POST" action="/arcanos/import/messages/csv/wide/file" enctype="multipart/form-data" class="mt-3">
+              <div class="row g-2 align-items-end">
+                <div class="col-md-9">
+                  <label class="form-label">Subir archivo CSV/TSV (columnas de tono)</label>
+                  <input class="form-control" type="file" name="msg_csv_wide_file" accept=".csv,.tsv,text/csv,text/tab-separated-values" />
+                </div>
+                <div class="col-md-3 d-grid">
+                  <button class="btn btn-outline-warning" type="submit">Subir e importar</button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
       </div>
-    </form>
-
-    <hr class="border-secondary my-4" />
-
-    <form method="POST" action="/arcanos/import/csv/file" enctype="multipart/form-data">
-      <label class="form-label">Subir CSV</label>
-      <div class="muted mb-2">Selecciona un archivo .csv/.tsv (tab, coma o punto y coma). El header debe coincidir con los campos.</div>
-      <input class="form-control" type="file" name="csv_file" accept=".csv,.tsv,text/csv,text/tab-separated-values" required />
-      <div class="d-flex align-items-center justify-content-end gap-2 mt-3">
-        <button class="btn btn-mystic text-dark fw-semibold" type="submit">Subir e importar</button>
-      </div>
-    </form>
-
-    <hr class="border-secondary my-4" />
-
-    <div class="fw-semibold mb-2">Conectores</div>
-    {{#if connectorsStatus}}
-      <div class="alert alert-success">{{connectorsStatus}}</div>
-    {{/if}}
-    <form method="POST" action="/arcanos/import/connectors">
-      <label class="form-label">JSON</label>
-      <textarea name="connectorsJson" rows="8" class="form-control" spellcheck="false" placeholder='[{"tipo":"pasado_presente","polaridad":"positivo_negativo","texto":"A pesar de ... {nombre} ..."}]'>{{connectorsJson}}</textarea>
-      <div class="d-flex align-items-center justify-content-end gap-2 mt-3">
-        <button class="btn btn-outline-info" type="submit">Importar Conectores (JSON)</button>
-      </div>
-    </form>
-    <form method="POST" action="/arcanos/import/connectors/csv" class="mt-3">
-      <label class="form-label">CSV / TSV</label>
-      <textarea name="connectorsCsv" rows="6" class="form-control" spellcheck="false" placeholder="tipo;polaridad;texto&#10;pasado_presente;positivo_negativo;A pesar de ... {nombre} ...">{{connectorsCsv}}</textarea>
-      <div class="d-flex align-items-center justify-content-end gap-2 mt-3">
-        <button class="btn btn-outline-info" type="submit">Importar Conectores (CSV)</button>
-      </div>
-    </form>
-    <form method="POST" action="/arcanos/import/connectors/csv/file" enctype="multipart/form-data" class="mt-3">
-      <label class="form-label">Subir CSV de Conectores</label>
-      <input class="form-control" type="file" name="conn_csv_file" accept=".csv,.tsv,text/csv,text/tab-separated-values" />
-      <div class="d-flex align-items-center justify-content-end gap-2 mt-3">
-        <button class="btn btn-outline-info" type="submit">Subir e importar</button>
-      </div>
-    </form>
-
-    <hr class="border-secondary my-4" />
-
-    <div class="fw-semibold mb-2">Mensajes de Arcanos</div>
-    {{#if messagesStatus}}
-      <div class="alert alert-success">{{messagesStatus}}</div>
-    {{/if}}
-    <form method="POST" action="/arcanos/import/messages">
-      <label class="form-label">JSON</label>
-      <textarea name="messagesJson" rows="8" class="form-control" spellcheck="false" placeholder='[{"arcano_id":0,"posicion":"pasado","contexto":"general","perfil_tono":"empático","contenido":"... {nombre} ... preparad{o/a} ..."}]'>{{messagesJson}}</textarea>
-      <div class="d-flex align-items-center justify-content-end gap-2 mt-3">
-        <button class="btn btn-outline-warning" type="submit">Importar Mensajes (JSON)</button>
-      </div>
-    </form>
-    <form method="POST" action="/arcanos/import/messages/csv" class="mt-3">
-      <label class="form-label">CSV / TSV</label>
-      <textarea name="messagesCsv" rows="6" class="form-control" spellcheck="false" placeholder="arcano_id;posicion;contexto;perfil_tono;contenido&#10;0;pasado;general;empático;Texto ...">{{messagesCsv}}</textarea>
-      <div class="d-flex align-items-center justify-content-end gap-2 mt-3">
-        <button class="btn btn-outline-warning" type="submit">Importar Mensajes (CSV)</button>
-      </div>
-    </form>
-    <form method="POST" action="/arcanos/import/messages/csv/file" enctype="multipart/form-data" class="mt-3">
-      <label class="form-label">Subir CSV de Mensajes</label>
-      <input class="form-control" type="file" name="msg_csv_file" accept=".csv,.tsv,text/csv,text/tab-separated-values" />
-      <div class="d-flex align-items-center justify-content-end gap-2 mt-3">
-        <button class="btn btn-outline-warning" type="submit">Subir e importar</button>
-      </div>
-    </form>
+    </div>
   </div>
 </main>

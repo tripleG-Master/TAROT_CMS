@@ -35,7 +35,7 @@ async function runForUser(user) {
       user,
       tirada: { cards },
       tema,
-      perfil_tono: "místico"
+      perfil_tono: "mistico"
     });
 
     assert(reading.ok === true, "No se pudo construir la lectura.");
@@ -74,4 +74,3 @@ main().catch((err) => {
   console.error(err);
   process.exitCode = 1;
 });
-

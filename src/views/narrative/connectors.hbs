@@ -15,7 +15,7 @@
           <option value="" {{#unless filters.tipo}}selected{{/unless}}>Todos</option>
           <option value="pasado_presente" {{#if (eq filters.tipo "pasado_presente")}}selected{{/if}}>pasado_presente</option>
           <option value="presente_futuro" {{#if (eq filters.tipo "presente_futuro")}}selected{{/if}}>presente_futuro</option>
-          <option value="introduccion" {{#if (eq filters.tipo "introduccion")}}selected{{/if}}>introduccion</option>
+          <option value="intro" {{#if (eq filters.tipo "intro")}}selected{{/if}}>intro</option>
           <option value="cierre" {{#if (eq filters.tipo "cierre")}}selected{{/if}}>cierre</option>
         </select>
       </div>
@@ -23,14 +23,24 @@
         <label class="form-label">Polaridad</label>
         <select name="polaridad" class="form-select">
           <option value="" {{#unless filters.polaridad}}selected{{/unless}}>Todos</option>
-          <option value="positivo_positivo" {{#if (eq filters.polaridad "positivo_positivo")}}selected{{/if}}>positivo_positivo</option>
-          <option value="positivo_negativo" {{#if (eq filters.polaridad "positivo_negativo")}}selected{{/if}}>positivo_negativo</option>
-          <option value="negativo_positivo" {{#if (eq filters.polaridad "negativo_positivo")}}selected{{/if}}>negativo_positivo</option>
-          <option value="negativo_negativo" {{#if (eq filters.polaridad "negativo_negativo")}}selected{{/if}}>negativo_negativo</option>
+          <option value="pos_pos" {{#if (eq filters.polaridad "pos_pos")}}selected{{/if}}>pos_pos</option>
+          <option value="pos_neg" {{#if (eq filters.polaridad "pos_neg")}}selected{{/if}}>pos_neg</option>
+          <option value="neg_pos" {{#if (eq filters.polaridad "neg_pos")}}selected{{/if}}>neg_pos</option>
+          <option value="neg_neg" {{#if (eq filters.polaridad "neg_neg")}}selected{{/if}}>neg_neg</option>
           <option value="neutro" {{#if (eq filters.polaridad "neutro")}}selected{{/if}}>neutro</option>
         </select>
       </div>
-      <div class="col-md-4 d-flex align-items-end">
+      <div class="col-md-4">
+        <label class="form-label">Tono</label>
+        <select name="perfil" class="form-select">
+          <option value="" {{#unless filters.perfil}}selected{{/unless}}>Todos</option>
+          <option value="general" {{#if (eq filters.perfil "general")}}selected{{/if}}>general</option>
+          <option value="empatico" {{#if (eq filters.perfil "empatico")}}selected{{/if}}>empatico</option>
+          <option value="directo" {{#if (eq filters.perfil "directo")}}selected{{/if}}>directo</option>
+          <option value="mistico" {{#if (eq filters.perfil "mistico")}}selected{{/if}}>mistico</option>
+        </select>
+      </div>
+      <div class="col-md-12 d-flex align-items-end">
         <button class="btn btn-mystic text-dark fw-semibold w-100" type="submit">Filtrar</button>
       </div>
     </form>
@@ -43,6 +53,8 @@
           <tr>
             <th style="width: 160px;">Tipo</th>
             <th style="width: 180px;">Polaridad</th>
+            <th style="width: 120px;">Tono</th>
+            <th style="width: 90px;" class="text-end">Peso</th>
             <th>Texto</th>
           </tr>
         </thead>
@@ -51,12 +63,14 @@
             <tr>
               <td><span class="badge bg-secondary">{{tipo}}</span></td>
               <td><span class="badge bg-dark">{{polaridad}}</span></td>
+              <td><span class="badge bg-warning text-dark">{{perfil}}</span></td>
+              <td class="text-end"><span class="badge bg-secondary">{{peso}}</span></td>
               <td style="white-space: pre-wrap;">{{texto}}</td>
             </tr>
           {{/each}}
           {{#unless rows}}
             <tr>
-              <td colspan="3" class="py-4"><div class="muted">No hay conectores con estos filtros.</div></td>
+              <td colspan="5" class="py-4"><div class="muted">No hay conectores con estos filtros.</div></td>
             </tr>
           {{/unless}}
         </tbody>
