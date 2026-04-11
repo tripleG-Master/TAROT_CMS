@@ -103,6 +103,26 @@ function computeAgeFromParsed(parsed) {
 }
 
 async function buildUserContext(user_data) {
+  const userIdCandidate = Number(user_data?.user_id ?? user_data?.userId);
+  if (
+    Number.isInteger(userIdCandidate) &&
+    userIdCandidate > 0 &&
+    (!user_data?.nacimiento && !user_data?.birthdate && !user_data?.birth_date && !user_data?.fecha_nacimiento)
+  ) {
+    const profile = await db.models.UserProfile.findOne({
+      where: { user_id: userIdCandidate },
+      raw: true
+    });
+    if (profile) {
+      user_data = {
+        ...user_data,
+        nombre: user_data?.nombre ?? user_data?.name ?? profile.nombre,
+        genero: user_data?.genero ?? user_data?.gender ?? profile.genero,
+        nacimiento: user_data?.nacimiento ?? user_data?.birthdate ?? profile.birthdate
+      };
+    }
+  }
+
   const nombre = String(user_data?.nombre ?? user_data?.name ?? "").trim();
   const genero = normalizeGenero(user_data?.genero ?? user_data?.gender);
   const nacimientoRaw = user_data?.nacimiento ?? user_data?.birthdate ?? "";

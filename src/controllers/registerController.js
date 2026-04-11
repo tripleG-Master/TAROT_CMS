@@ -1,10 +1,49 @@
 const db = require("../db");
 const { parseBirthdate, getZodiacByBirthdate } = require("../services/zodiac");
 const { lifePathNumber, birthArcanaFromBirthdate } = require("../services/numerology");
+const crypto = require("node:crypto");
+
+function normalizeGenero(input) {
+  const raw = String(input || "").trim().toLowerCase();
+  if (["m", "masculino", "hombre", "male"].includes(raw)) return "hombre";
+  if (["f", "femenino", "mujer", "female"].includes(raw)) return "mujer";
+  return "neutro";
+}
+
+function todayUtcDateOnly() {
+  const now = new Date();
+  const y = now.getUTCFullYear();
+  const m = String(now.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(now.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+async function ensureFreeEntitlement(user_id) {
+  const row = await db.models.Entitlement.findOne({
+    where: { user_id },
+    order: [["createdAt", "DESC"]],
+    raw: true
+  });
+  if (row) return row;
+  const created = await db.models.Entitlement.create({
+    user_id,
+    plan: "free",
+    status: "active",
+    provider: "google_play",
+    product_id: "",
+    purchase_token: "",
+    expires_at: null,
+    last_validated_at: null
+  });
+  return created.get({ plain: true });
+}
 
 async function register(req, res) {
   const name = String(req.body?.name ?? req.body?.nombre ?? "").trim();
+  const genero = normalizeGenero(req.body?.genero ?? req.body?.gender);
   const birthdateRaw = req.body?.birthdate ?? req.body?.fecha_nacimiento ?? req.body?.date;
+  const external_id = String(req.body?.external_id ?? req.body?.device_id ?? req.body?.installation_id ?? "").trim();
+  const externalId = external_id || crypto.randomUUID();
 
   const parsed = parseBirthdate(birthdateRaw);
   if (!parsed) {
@@ -24,15 +63,50 @@ async function register(req, res) {
     raw: true
   });
 
+  const user = await db.models.User.findOne({ where: { external_id: externalId } });
+  const userRow = user
+    ? user
+    : await db.models.User.create({ external_id: externalId, provider: "android" });
+  const user_id = userRow.id;
+
+  const birthdateIso = zodiac
+    ? zodiac.birthdate
+    : `${String(parsed.year).padStart(4, "0")}-${String(parsed.month).padStart(2, "0")}-${String(parsed.day).padStart(2, "0")}`;
+
+  const existingProfile = await db.models.UserProfile.findOne({ where: { user_id } });
+  if (existingProfile) {
+    existingProfile.nombre = name;
+    existingProfile.genero = genero;
+    existingProfile.birthdate = birthdateIso;
+    existingProfile.zodiac = zodiac ? zodiac.sign : "";
+    existingProfile.life_path = lifePath;
+    existingProfile.birth_arcana = birthArcana.major_arcana_numero;
+    await existingProfile.save();
+  } else {
+    await db.models.UserProfile.create({
+      user_id,
+      nombre: name,
+      genero,
+      birthdate: birthdateIso,
+      zodiac: zodiac ? zodiac.sign : "",
+      life_path: lifePath,
+      birth_arcana: birthArcana.major_arcana_numero
+    });
+  }
+
+  const entitlement = await ensureFreeEntitlement(user_id);
+
   return res.json({
     ok: true,
-    user: {
-      name,
-      birthdate: zodiac ? zodiac.birthdate : `${String(parsed.year).padStart(4, "0")}-${String(parsed.month).padStart(2, "0")}-${String(parsed.day).padStart(2, "0")}`
-    },
+    user: { user_id, external_id: externalId, name, birthdate: birthdateIso, genero },
     zodiac: zodiac ? zodiac.sign : null,
     numerology: {
       life_path: lifePath
+    },
+    entitlement: {
+      plan: entitlement.plan,
+      status: entitlement.status,
+      expires_at: entitlement.expires_at || null
     },
     birth_arcana: {
       total: birthArcana.total,
@@ -52,4 +126,60 @@ async function register(req, res) {
   });
 }
 
-module.exports = { register };
+async function getProfile(req, res) {
+  const user_id = Number(req.params?.id);
+  if (!Number.isInteger(user_id) || user_id <= 0) return res.status(400).json({ ok: false, error: "user_id inválido" });
+  const user = await db.models.User.findByPk(user_id, { raw: true });
+  if (!user) return res.status(404).json({ ok: false, error: "no encontrado" });
+  const profile = await db.models.UserProfile.findOne({ where: { user_id }, raw: true });
+  const entitlement = await db.models.Entitlement.findOne({ where: { user_id }, order: [["createdAt", "DESC"]], raw: true });
+  const period = todayUtcDateOnly();
+  const usage = await db.models.UsageCounter.findOne({ where: { user_id, period }, raw: true });
+  return res.json({
+    ok: true,
+    user: { id: user.id, external_id: user.external_id, provider: user.provider },
+    profile: profile
+      ? {
+          nombre: profile.nombre,
+          genero: profile.genero,
+          birthdate: profile.birthdate,
+          zodiac: profile.zodiac,
+          life_path: profile.life_path,
+          birth_arcana: profile.birth_arcana
+        }
+      : null,
+    entitlement: entitlement ? { plan: entitlement.plan, status: entitlement.status, expires_at: entitlement.expires_at || null } : null,
+    usage: usage
+      ? { period: usage.period, requests: usage.requests, tokens_prompt: usage.tokens_prompt, tokens_output: usage.tokens_output, tokens_total: usage.tokens_total }
+      : { period, requests: 0, tokens_prompt: 0, tokens_output: 0, tokens_total: 0 }
+  });
+}
+
+async function setEntitlement(req, res) {
+  const user_id = Number(req.body?.user_id);
+  if (!Number.isInteger(user_id) || user_id <= 0) return res.status(400).json({ ok: false, error: "user_id inválido" });
+  const plan = String(req.body?.plan || "free").trim().toLowerCase();
+  const status = String(req.body?.status || "active").trim().toLowerCase();
+  const provider = String(req.body?.provider || "google_play").trim() || "google_play";
+  const product_id = String(req.body?.product_id || "").trim();
+  const purchase_token = String(req.body?.purchase_token || "").trim();
+  const expires_at = req.body?.expires_at ? new Date(req.body.expires_at) : null;
+
+  if (!["free", "premium"].includes(plan)) return res.status(400).json({ ok: false, error: "plan inválido" });
+  if (!["active", "expired", "canceled", "grace"].includes(status)) return res.status(400).json({ ok: false, error: "status inválido" });
+
+  const created = await db.models.Entitlement.create({
+    user_id,
+    plan,
+    status,
+    provider,
+    product_id,
+    purchase_token,
+    expires_at: expires_at && !Number.isNaN(expires_at.getTime()) ? expires_at : null,
+    last_validated_at: null
+  });
+
+  return res.json({ ok: true, entitlement: { id: created.id, user_id, plan, status, expires_at: created.expires_at || null } });
+}
+
+module.exports = { register, getProfile, setEntitlement };

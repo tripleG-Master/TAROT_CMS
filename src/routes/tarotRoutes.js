@@ -9,6 +9,7 @@ router.get("/lectura", controller.showLectura);
 router.get("/gemini", controller.showGemini);
 router.get("/gemini/generations", controller.showGeminiGenerations);
 router.get("/gemini/templates", controller.showGeminiTemplates);
+router.get("/users", controller.showUsers);
 router.get("/conectores", narrativeController.showConnectors);
 router.get("/mensajes", narrativeController.showMessages);
 

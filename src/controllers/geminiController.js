@@ -57,6 +57,87 @@ function enforceFreeTarotOutput(text) {
     .join("\n");
 }
 
+function todayUtcDateOnly() {
+  const now = new Date();
+  const y = now.getUTCFullYear();
+  const m = String(now.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(now.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+async function incrementUsage({ user_id, usage }) {
+  if (!Number.isInteger(user_id) || user_id <= 0) return null;
+  const period = todayUtcDateOnly();
+  const prompt = Number(usage?.promptTokens) || 0;
+  const output = Number(usage?.outputTokens) || 0;
+  const total = Number(usage?.totalTokens) || 0;
+
+  const existing = await db.models.UsageCounter.findOne({ where: { user_id, period } });
+  if (existing) {
+    existing.requests = Number(existing.requests || 0) + 1;
+    existing.tokens_prompt = Number(existing.tokens_prompt || 0) + prompt;
+    existing.tokens_output = Number(existing.tokens_output || 0) + output;
+    existing.tokens_total = Number(existing.tokens_total || 0) + total;
+    await existing.save();
+    return existing.get({ plain: true });
+  }
+
+  const created = await db.models.UsageCounter.create({
+    user_id,
+    period,
+    requests: 1,
+    tokens_prompt: prompt,
+    tokens_output: output,
+    tokens_total: total
+  });
+  return created.get({ plain: true });
+}
+
+async function getActiveEntitlement(user_id) {
+  if (!Number.isInteger(user_id) || user_id <= 0) return null;
+  const ent = await db.models.Entitlement.findOne({
+    where: { user_id },
+    order: [["createdAt", "DESC"]],
+    raw: true
+  });
+  if (!ent) return null;
+  if (String(ent.plan || "") === "premium" && String(ent.status || "") === "active") {
+    if (ent.expires_at) {
+      const exp = new Date(ent.expires_at);
+      if (!Number.isNaN(exp.getTime()) && exp.getTime() < Date.now()) return { ...ent, status: "expired" };
+    }
+    return ent;
+  }
+  if (String(ent.plan || "") === "free") return ent;
+  return ent;
+}
+
+async function ensureFreeEntitlement(user_id) {
+  if (!Number.isInteger(user_id) || user_id <= 0) return null;
+  const row = await db.models.Entitlement.findOne({ where: { user_id }, order: [["createdAt", "DESC"]], raw: true });
+  if (row) return row;
+  const created = await db.models.Entitlement.create({
+    user_id,
+    plan: "free",
+    status: "active",
+    provider: "google_play",
+    product_id: "",
+    purchase_token: "",
+    expires_at: null,
+    last_validated_at: null
+  });
+  return created.get({ plain: true });
+}
+
+async function ensureUserIdFromExternalId(external_id) {
+  const ext = String(external_id || "").trim();
+  if (!ext) return null;
+  const existing = await db.models.User.findOne({ where: { external_id: ext } });
+  const user = existing ? existing : await db.models.User.create({ external_id: ext, provider: "android" });
+  await ensureFreeEntitlement(user.id);
+  return user.id;
+}
+
 async function generate(req, res) {
   try {
     const prompt = req.body?.prompt ?? req.body?.text ?? "";
@@ -85,6 +166,14 @@ async function generate(req, res) {
       thinkingBudget
     });
 
+    let user_id = Number(req.body?.user_id ?? req.body?.userId);
+    if (!Number.isInteger(user_id) || user_id <= 0) {
+      const external_id = req.body?.external_id ?? req.body?.externalId ?? req.body?.device_id ?? req.body?.installation_id;
+      const resolved = await ensureUserIdFromExternalId(external_id);
+      if (resolved) user_id = resolved;
+    }
+    const usageRow = await incrementUsage({ user_id, usage: result?.usage });
+
     if (store) {
       const m = result.model || normalizeModelName(model) || normalizeModelName(process.env.GEMINI_MODEL) || "gemini-2.5-flash";  
       const fingerprint = sha256(JSON.stringify({ kind: "generic", model: m, prompt, system }).slice(0, 1000));
@@ -108,6 +197,10 @@ async function generate(req, res) {
       ok: true,
       model: result.model || normalizeModelName(model) || normalizeModelName(process.env.GEMINI_MODEL) || "gemini-1.5-flash",
       text: result.text,
+      user_id: Number.isInteger(user_id) && user_id > 0 ? user_id : undefined,
+      usage_counter: usageRow
+        ? { period: usageRow.period, requests: usageRow.requests, tokens_prompt: usageRow.tokens_prompt, tokens_output: usageRow.tokens_output, tokens_total: usageRow.tokens_total }
+        : undefined,
       usage: {
         tokens: {
           prompt: result?.usage?.promptTokens,
@@ -141,6 +234,18 @@ async function generate(req, res) {
 async function tarotReading(req, res) {
   try {
     const user_data = req.body?.user_data ?? req.body?.user ?? {};
+    let user_id = Number(req.body?.user_id ?? req.body?.userId ?? user_data?.user_id ?? user_data?.userId);
+    if (!Number.isInteger(user_id) || user_id <= 0) {
+      const external_id =
+        req.body?.external_id ??
+        req.body?.externalId ??
+        user_data?.external_id ??
+        user_data?.externalId ??
+        req.body?.device_id ??
+        req.body?.installation_id;
+      const resolved = await ensureUserIdFromExternalId(external_id);
+      if (resolved) user_id = resolved;
+    }
     const tirada = req.body?.tirada ?? {};
     const tema = req.body?.tema ?? "general";
     const pregunta = req.body?.pregunta ?? req.body?.question ?? req.body?.consulta ?? "";
@@ -171,8 +276,15 @@ async function tarotReading(req, res) {
     const includePrompt = req.body?.includePrompt === true;
     const store = req.body?.store !== false;
 
+    if (mode === "premium") {
+      const ent = await getActiveEntitlement(user_id);
+      if (!ent || ent.plan !== "premium" || ent.status !== "active") {
+        return res.status(402).json({ ok: false, error: "premium_required" });
+      }
+    }
+
     const built = await buildTarotReadingPrompt({
-      user_data,
+      user_data: { ...user_data, user_id: Number.isInteger(user_id) ? user_id : undefined },
       tirada,
       tema,
       preprompt,
@@ -193,6 +305,8 @@ async function tarotReading(req, res) {
     });
 
     const finalText = mode === "free" ? enforceFreeTarotOutput(result.text || "") : (result.text || "");
+    const usageRow = await incrementUsage({ user_id, usage: result?.usage });
+    const entitlement = await getActiveEntitlement(user_id);
 
     if (store) {
       const m = result.model || normalizeModelName(model) || normalizeModelName(process.env.GEMINI_MODEL) || "gemini-1.5-flash";
@@ -220,6 +334,11 @@ async function tarotReading(req, res) {
       reading_mode: String(reading_mode || "").trim() || undefined,
       pregunta: String(pregunta || "").trim() || undefined,
       text: finalText,
+      user_id: Number.isInteger(user_id) && user_id > 0 ? user_id : undefined,
+      entitlement: entitlement ? { plan: entitlement.plan, status: entitlement.status, expires_at: entitlement.expires_at || null } : undefined,
+      usage_counter: usageRow
+        ? { period: usageRow.period, requests: usageRow.requests, tokens_prompt: usageRow.tokens_prompt, tokens_output: usageRow.tokens_output, tokens_total: usageRow.tokens_total }
+        : undefined,
       context: includeContext ? { compact: built.context, full: built.context_full } : undefined,
       system: includePrompt ? built.system : undefined,
       prompt: includePrompt ? built.prompt : undefined,

@@ -1,0 +1,59 @@
+<main class="container py-4">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+      <h1 class="h3 brand mb-1">Usuarios</h1>
+      <div class="muted">Usuarios registrados y/o con uso detectado. Uso del día (UTC): {{period}}</div>
+    </div>
+    <a class="btn btn-outline-light" href="/tarot/calculo">Volver</a>
+  </div>
+
+  <div class="card p-3">
+    <div class="table-responsive">
+      <table class="table table-sm align-middle">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>External ID</th>
+            <th>Nombre</th>
+            <th>Nacimiento</th>
+            <th>Zodiaco</th>
+            <th>Plan</th>
+            <th>Uso (hoy)</th>
+            <th>Creado</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#if rows.length}}
+            {{#each rows}}
+              <tr>
+                <td class="text-nowrap"><span class="badge bg-secondary">{{id}}</span></td>
+                <td style="max-width: 220px; word-break: break-all;">{{external_id}}</td>
+                <td class="text-nowrap">{{#if profile}}{{profile.nombre}}{{else}}—{{/if}}</td>
+                <td class="text-nowrap">{{#if profile}}{{profile.birthdate}}{{else}}—{{/if}}</td>
+                <td class="text-nowrap">{{#if profile}}{{profile.zodiac}}{{else}}—{{/if}}</td>
+                <td class="text-nowrap">
+                  {{#if entitlement}}
+                    <span class="badge bg-info text-dark">{{entitlement.plan}}</span>
+                    <span class="badge bg-dark">{{entitlement.status}}</span>
+                  {{else}}
+                    <span class="badge bg-secondary">free</span>
+                  {{/if}}
+                </td>
+                <td class="text-nowrap">
+                  <span class="badge bg-secondary">{{usage.requests}}</span>
+                  <span class="muted">req</span>
+                  <span class="badge bg-dark ms-2">{{usage.tokens_total}}</span>
+                  <span class="muted">tokens</span>
+                </td>
+                <td class="text-nowrap">{{createdAt}}</td>
+              </tr>
+            {{/each}}
+          {{else}}
+            <tr><td colspan="8" class="text-center py-4">Sin usuarios aún.</td></tr>
+          {{/if}}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+

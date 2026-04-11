@@ -220,6 +220,62 @@ async function initDb() {
     );
     CREATE INDEX IF NOT EXISTS idx_gemini_templates_tema ON gemini_templates (tema);
     CREATE INDEX IF NOT EXISTS idx_gemini_templates_approved ON gemini_templates (approved);
+
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      external_id TEXT NOT NULL DEFAULT '',
+      provider TEXT NOT NULL DEFAULT 'android',
+      "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      "deletedAt" TIMESTAMPTZ
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_users_external_id ON users (external_id);
+
+    CREATE TABLE IF NOT EXISTS user_profiles (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      nombre TEXT NOT NULL DEFAULT '',
+      genero TEXT NOT NULL DEFAULT 'neutro',
+      birthdate DATE,
+      zodiac TEXT NOT NULL DEFAULT '',
+      life_path INTEGER,
+      birth_arcana INTEGER,
+      "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      "deletedAt" TIMESTAMPTZ
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_user_profiles_user_id ON user_profiles (user_id);
+    CREATE INDEX IF NOT EXISTS idx_user_profiles_birthdate ON user_profiles (birthdate);
+
+    CREATE TABLE IF NOT EXISTS entitlements (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      plan TEXT NOT NULL DEFAULT 'free',
+      status TEXT NOT NULL DEFAULT 'active',
+      provider TEXT NOT NULL DEFAULT 'google_play',
+      product_id TEXT NOT NULL DEFAULT '',
+      purchase_token TEXT NOT NULL DEFAULT '',
+      expires_at TIMESTAMPTZ,
+      last_validated_at TIMESTAMPTZ,
+      "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      "deletedAt" TIMESTAMPTZ
+    );
+    CREATE INDEX IF NOT EXISTS idx_entitlements_user_id ON entitlements (user_id);
+    CREATE INDEX IF NOT EXISTS idx_entitlements_plan_status ON entitlements (plan, status);
+
+    CREATE TABLE IF NOT EXISTS usage_counters (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      period DATE NOT NULL,
+      requests INTEGER NOT NULL DEFAULT 0,
+      tokens_prompt INTEGER NOT NULL DEFAULT 0,
+      tokens_output INTEGER NOT NULL DEFAULT 0,
+      tokens_total INTEGER NOT NULL DEFAULT 0,
+      "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_usage_counters_user_period ON usage_counters (user_id, period);
   `);
 
   await sequelize.sync();
