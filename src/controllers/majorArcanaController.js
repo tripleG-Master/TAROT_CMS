@@ -628,6 +628,15 @@ function csvToObjects(csvText) {
   return objects;
 }
 
+function decodeUploadedTextBuffer(buffer) {
+  if (!buffer || !Buffer.isBuffer(buffer)) return "";
+  const utf8 = buffer.toString("utf8");
+  if (utf8.includes("�")) {
+    return buffer.toString("latin1");
+  }
+  return utf8;
+}
+
 async function importCsv(req, res, next) {
   try {
     const csv = String(req.body?.csv || "");
@@ -682,7 +691,7 @@ async function importCsv(req, res, next) {
 async function importCsvFile(req, res, next) {
   try {
     const originalName = req.file?.originalname ? String(req.file.originalname) : "";
-    const csv = req.file?.buffer ? req.file.buffer.toString("utf8") : "";
+    const csv = decodeUploadedTextBuffer(req.file?.buffer);
     const rows = csvToObjects(csv);
     const { items, created, updated, skipped } = await performImport(rows);
 
@@ -872,15 +881,6 @@ async function importArcanaMessagesJson(req, res, next) {
       return null;
     }
 
-    function normalizeArcanaMessageLuzSombra(input) {
-      const raw = String(input || "").trim().toLowerCase();
-      if (!raw) return null;
-      if (["luz"].includes(raw)) return "luz";
-      if (["sombra"].includes(raw)) return "sombra";
-      if (["neutra"].includes(raw)) return "neutra";
-      return null;
-    }
-
     const input = req.body?.messagesJson ?? req.body?.json ?? req.body;
     let rows = input;
     if (typeof rows === "string") {
@@ -890,19 +890,15 @@ async function importArcanaMessagesJson(req, res, next) {
     const list = Array.isArray(rows) ? rows : rows?.items ?? [];
     const invalidPolaridad = new Set();
     const invalidSentido = new Set();
-    const invalidLuzSombra = new Set();
     for (const r of list) {
       const pRaw = String(r?.polaridad ?? "").trim().toLowerCase();
       const sRaw = String(r?.sentido ?? "").trim().toLowerCase();
-      const lRaw = String(r?.luz_sombra ?? r?.luzSombra ?? r?.registro ?? r?.reg ?? "").trim().toLowerCase();
       if (!pRaw || !normalizeArcanaMessagePolarity(pRaw)) invalidPolaridad.add(pRaw || "(vacío)");
       if (!sRaw || !normalizeArcanaMessageSentido(sRaw)) invalidSentido.add(sRaw || "(vacío)");
-      if (!lRaw || !normalizeArcanaMessageLuzSombra(lRaw)) invalidLuzSombra.add(lRaw || "(vacío)");
     }
-    if (invalidPolaridad.size > 0 || invalidSentido.size > 0 || invalidLuzSombra.size > 0) {
+    if (invalidPolaridad.size > 0 || invalidSentido.size > 0) {
       const pol = Array.from(invalidPolaridad).slice(0, 10).join(", ");
       const sen = Array.from(invalidSentido).slice(0, 10).join(", ");
-      const luz = Array.from(invalidLuzSombra).slice(0, 10).join(", ");
       return res.status(400).render("majorArcana/import", {
         title: "Importar Arcanos",
         json: "",
@@ -915,8 +911,8 @@ async function importArcanaMessagesJson(req, res, next) {
         connectorsStatus: "",
         messagesStatus: "",
         error:
-          "Contrato inválido. Valores permitidos: polaridad=favorable|desafiante|neutra; sentido=derecho|invertido|neutro; luz_sombra=luz|sombra|neutra. " +
-          `Recibidos: polaridad=[${pol}] sentido=[${sen}] luz_sombra=[${luz}]`,
+          "Contrato inválido. Valores permitidos: polaridad=favorable|desafiante|neutra; sentido=derecho|invertido|neutro. " +
+          `Recibidos: polaridad=[${pol}] sentido=[${sen}]`,
         result: null
       });
     }
@@ -928,7 +924,6 @@ async function importArcanaMessagesJson(req, res, next) {
         perfil_tono: String(r.perfil_tono ?? r.perfil ?? "general").trim() || "general",
         polaridad: normalizeArcanaMessagePolarity(r.polaridad),
         sentido: normalizeArcanaMessageSentido(r.sentido),
-        luz_sombra: normalizeArcanaMessageLuzSombra(r.luz_sombra ?? r.luzSombra ?? r.registro ?? r.reg),
         contenido: String(r.contenido || "").trim()
       }))
       .filter(
@@ -938,8 +933,7 @@ async function importArcanaMessagesJson(req, res, next) {
           r.contexto &&
           r.contenido &&
           r.polaridad &&
-          r.sentido &&
-          r.luz_sombra
+          r.sentido
       );
     if (normalized.length === 0) {
       return res.status(400).render("majorArcana/import", {
@@ -1065,32 +1059,19 @@ async function importArcanaMessagesCsv(req, res, next) {
       return null;
     }
 
-    function normalizeArcanaMessageLuzSombra(input) {
-      const raw = String(input || "").trim().toLowerCase();
-      if (!raw) return null;
-      if (raw === "luz") return "luz";
-      if (raw === "sombra") return "sombra";
-      if (raw === "neutra") return "neutra";
-      return null;
-    }
-
     const csv = String(req.body?.messagesCsv || req.body?.csv || "");
     const rows = csvToObjects(csv);
     const invalidPolaridad = new Set();
     const invalidSentido = new Set();
-    const invalidLuzSombra = new Set();
     for (const r of rows) {
       const pRaw = String(r?.polaridad ?? "").trim().toLowerCase();
       const sRaw = String(r?.sentido ?? "").trim().toLowerCase();
-      const lRaw = String(r?.luz_sombra ?? r?.luzSombra ?? r?.registro ?? r?.reg ?? "").trim().toLowerCase();
       if (!pRaw || !normalizeArcanaMessagePolarity(pRaw)) invalidPolaridad.add(pRaw || "(vacío)");
       if (!sRaw || !normalizeArcanaMessageSentido(sRaw)) invalidSentido.add(sRaw || "(vacío)");
-      if (!lRaw || !normalizeArcanaMessageLuzSombra(lRaw)) invalidLuzSombra.add(lRaw || "(vacío)");
     }
-    if (invalidPolaridad.size > 0 || invalidSentido.size > 0 || invalidLuzSombra.size > 0) {
+    if (invalidPolaridad.size > 0 || invalidSentido.size > 0) {
       const pol = Array.from(invalidPolaridad).slice(0, 10).join(", ");
       const sen = Array.from(invalidSentido).slice(0, 10).join(", ");
-      const luz = Array.from(invalidLuzSombra).slice(0, 10).join(", ");
       return res.status(400).render("majorArcana/import", {
         title: "Importar Arcanos",
         json: "",
@@ -1103,8 +1084,8 @@ async function importArcanaMessagesCsv(req, res, next) {
         connectorsStatus: "",
         messagesStatus: "",
         error:
-          "Contrato inválido. Valores permitidos: polaridad=favorable|desafiante|neutra; sentido=derecho|invertido|neutro; luz_sombra=luz|sombra|neutra. " +
-          `Recibidos: polaridad=[${pol}] sentido=[${sen}] luz_sombra=[${luz}]`,
+          "Contrato inválido. Valores permitidos: polaridad=favorable|desafiante|neutra; sentido=derecho|invertido|neutro. " +
+          `Recibidos: polaridad=[${pol}] sentido=[${sen}]`,
         result: null
       });
     }
@@ -1116,7 +1097,6 @@ async function importArcanaMessagesCsv(req, res, next) {
         perfil_tono: String(r.perfil_tono ?? r.perfil ?? "general").trim() || "general",
         polaridad: normalizeArcanaMessagePolarity(r.polaridad),
         sentido: normalizeArcanaMessageSentido(r.sentido),
-        luz_sombra: normalizeArcanaMessageLuzSombra(r.luz_sombra ?? r.luzSombra ?? r.registro ?? r.reg),
         contenido: String(r.contenido || "").trim()
       }))
       .filter(
@@ -1126,8 +1106,7 @@ async function importArcanaMessagesCsv(req, res, next) {
           r.contexto &&
           r.contenido &&
           r.polaridad &&
-          r.sentido &&
-          r.luz_sombra
+          r.sentido
       );
     if (normalized.length === 0) {
       return res.status(400).render("majorArcana/import", {
@@ -1178,7 +1157,7 @@ async function importArcanaMessagesCsv(req, res, next) {
 async function importConnectorsCsvFile(req, res, next) {
   try {
     const originalName = req.file?.originalname ? String(req.file.originalname) : "";
-    const csv = req.file?.buffer ? req.file.buffer.toString("utf8") : "";
+    const csv = decodeUploadedTextBuffer(req.file?.buffer);
     req.body.connectorsCsv = csv;
     return importConnectorsCsv(req, res, next);
   } catch (err) {
@@ -1201,7 +1180,7 @@ async function importConnectorsCsvFile(req, res, next) {
 async function importArcanaMessagesCsvFile(req, res, next) {
   try {
     const originalName = req.file?.originalname ? String(req.file.originalname) : "";
-    const csv = req.file?.buffer ? req.file.buffer.toString("utf8") : "";
+    const csv = decodeUploadedTextBuffer(req.file?.buffer);
     req.body.messagesCsv = csv;
     return importArcanaMessagesCsv(req, res, next);
   } catch (err) {
@@ -1261,15 +1240,6 @@ async function importArcanaMessagesCsvWide(req, res, next) {
       return null;
     }
 
-    function normalizeArcanaMessageLuzSombra(input) {
-      const raw = String(input || "").trim().toLowerCase();
-      if (!raw) return null;
-      if (raw === "luz") return "luz";
-      if (raw === "sombra") return "sombra";
-      if (raw === "neutra") return "neutra";
-      return null;
-    }
-
     const csv = String(req.body?.messagesCsvWide || "");
     const rows = csvToObjects(csv).map(normalizeObjectKeys);
 
@@ -1278,19 +1248,15 @@ async function importArcanaMessagesCsvWide(req, res, next) {
 
     const invalidPolaridad = new Set();
     const invalidSentido = new Set();
-    const invalidLuzSombra = new Set();
     for (const r of rows) {
       const pRaw = String(r?.polaridad ?? "").trim().toLowerCase();
       const sRaw = String(r?.sentido ?? "").trim().toLowerCase();
-      const lRaw = String(r?.luz_sombra ?? r?.luzsombra ?? r?.registro ?? r?.reg ?? "").trim().toLowerCase();
       if (!pRaw || !normalizeArcanaMessagePolarity(pRaw)) invalidPolaridad.add(pRaw || "(vacío)");
       if (!sRaw || !normalizeArcanaMessageSentido(sRaw)) invalidSentido.add(sRaw || "(vacío)");
-      if (!lRaw || !normalizeArcanaMessageLuzSombra(lRaw)) invalidLuzSombra.add(lRaw || "(vacío)");
     }
-    if (invalidPolaridad.size > 0 || invalidSentido.size > 0 || invalidLuzSombra.size > 0) {
+    if (invalidPolaridad.size > 0 || invalidSentido.size > 0) {
       const pol = Array.from(invalidPolaridad).slice(0, 10).join(", ");
       const sen = Array.from(invalidSentido).slice(0, 10).join(", ");
-      const luz = Array.from(invalidLuzSombra).slice(0, 10).join(", ");
       return res.status(400).render("majorArcana/import", {
         title: "Importar Arcanos",
         json: "",
@@ -1303,8 +1269,8 @@ async function importArcanaMessagesCsvWide(req, res, next) {
         connectorsStatus: "",
         messagesStatus: "",
         error:
-          "Contrato inválido. Valores permitidos: polaridad=favorable|desafiante|neutra; sentido=derecho|invertido|neutro; luz_sombra=luz|sombra|neutra. " +
-          `Recibidos: polaridad=[${pol}] sentido=[${sen}] luz_sombra=[${luz}]`,
+          "Contrato inválido. Valores permitidos: polaridad=favorable|desafiante|neutra; sentido=derecho|invertido|neutro. " +
+          `Recibidos: polaridad=[${pol}] sentido=[${sen}]`,
         result: null
       });
     }
@@ -1327,7 +1293,6 @@ async function importArcanaMessagesCsvWide(req, res, next) {
       const posicion = String(r.posicion || "").trim().toLowerCase();
       const sentido = normalizeArcanaMessageSentido(r.sentido);
       const polaridad = normalizeArcanaMessagePolarity(r.polaridad);
-      const luz_sombra = normalizeArcanaMessageLuzSombra(r.luz_sombra ?? r.luzsombra ?? r.registro ?? r.reg);
 
       const variants = [
         { perfil_tono: "general", contenido: String(r.general || "").trim() },
@@ -1344,7 +1309,6 @@ async function importArcanaMessagesCsvWide(req, res, next) {
           posicion,
           sentido,
           polaridad,
-          luz_sombra,
           perfil_tono: v.perfil_tono,
           contenido: v.contenido
         });
@@ -1407,7 +1371,7 @@ async function importArcanaMessagesCsvWide(req, res, next) {
 
 async function importArcanaMessagesCsvWideFile(req, res, next) {
   try {
-    const csv = req.file?.buffer ? req.file.buffer.toString("utf8") : "";
+    const csv = decodeUploadedTextBuffer(req.file?.buffer);
     req.body.messagesCsvWide = csv;
     return importArcanaMessagesCsvWide(req, res, next);
   } catch (err) {

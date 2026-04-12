@@ -72,13 +72,14 @@ async function register(req, res) {
   const birthdateIso = zodiac
     ? zodiac.birthdate
     : `${String(parsed.year).padStart(4, "0")}-${String(parsed.month).padStart(2, "0")}-${String(parsed.day).padStart(2, "0")}`;
+  const zodiacText = zodiac ? String(zodiac.sign?.name_es || "").trim() : "";
 
   const existingProfile = await db.models.UserProfile.findOne({ where: { user_id } });
   if (existingProfile) {
     existingProfile.nombre = name;
     existingProfile.genero = genero;
     existingProfile.birthdate = birthdateIso;
-    existingProfile.zodiac = zodiac ? zodiac.sign : "";
+    existingProfile.zodiac = zodiacText;
     existingProfile.life_path = lifePath;
     existingProfile.birth_arcana = birthArcana.major_arcana_numero;
     await existingProfile.save();
@@ -88,7 +89,7 @@ async function register(req, res) {
       nombre: name,
       genero,
       birthdate: birthdateIso,
-      zodiac: zodiac ? zodiac.sign : "",
+      zodiac: zodiacText,
       life_path: lifePath,
       birth_arcana: birthArcana.major_arcana_numero
     });

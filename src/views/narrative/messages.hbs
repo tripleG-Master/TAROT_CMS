@@ -4,10 +4,19 @@
       <h1 class="h3 brand mb-1">Mensajes de Arcanos</h1>
       <div class="muted">Filtra por arcano/posición/contexto/tono y revisa el contenido.</div>
     </div>
-    <a class="btn btn-outline-light" href="/tarot/lectura">Volver a Lectura</a>
+    <div class="d-flex gap-2 flex-wrap">
+      <form method="POST" action="/tarot/mensajes/delete-all" onsubmit="return confirm('Esto borrará TODOS los mensajes de arcanos. ¿Continuar?');">
+        <button class="btn btn-outline-danger" type="submit">Borrar mensajes</button>
+      </form>
+      <a class="btn btn-outline-light" href="/tarot/lectura">Volver a Lectura</a>
+    </div>
   </div>
 
   <div class="card p-4">
+    {{#if deleted}}
+      <div class="alert alert-success">Mensajes borrados: {{deleted}}</div>
+    {{/if}}
+
     <form method="GET" action="/tarot/mensajes" class="row g-3">
       <div class="col-md-2">
         <label class="form-label">Arcano ID</label>

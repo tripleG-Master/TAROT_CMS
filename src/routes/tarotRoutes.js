@@ -12,5 +12,7 @@ router.get("/gemini/templates", controller.showGeminiTemplates);
 router.get("/users", controller.showUsers);
 router.get("/conectores", narrativeController.showConnectors);
 router.get("/mensajes", narrativeController.showMessages);
+router.post("/conectores/delete-all", narrativeController.deleteAllConnectors);
+router.post("/mensajes/delete-all", narrativeController.deleteAllMessages);
 
 module.exports = router;

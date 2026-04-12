@@ -14,10 +14,69 @@ async function showLectura(req, res, next) {
       raw: true
     });
 
+    const temaRows = await db.models.ArcanaMessage.findAll({
+      attributes: ["contexto"],
+      group: ["contexto"],
+      raw: true
+    });
+    const temasSet = new Set(
+      temaRows
+        .map((r) => String(r?.contexto || "").trim().toLowerCase())
+        .filter(Boolean)
+    );
+    const temaOrder = ["general", "amor", "dinero", "salud"];
+    const temasSorted = Array.from(temasSet).sort((a, b) => {
+      const ia = temaOrder.indexOf(a);
+      const ib = temaOrder.indexOf(b);
+      if (ia !== -1 || ib !== -1) return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+      return a.localeCompare(b);
+    });
+    const selectedTema = temasSorted.includes("general") ? "general" : temasSorted[0] || "";
+    const temas = temasSorted.map((value) => ({
+      value,
+      label: value ? value.charAt(0).toUpperCase() + value.slice(1) : value,
+      selected: value === selectedTema
+    }));
+
+    const tonoRowsMessages = await db.models.ArcanaMessage.findAll({
+      attributes: ["perfil_tono"],
+      group: ["perfil_tono"],
+      raw: true
+    });
+    const tonoRowsConnectors = await db.models.Connector.findAll({
+      attributes: ["perfil"],
+      group: ["perfil"],
+      raw: true
+    });
+    const tonosSet = new Set(
+      [...tonoRowsMessages.map((r) => r?.perfil_tono), ...tonoRowsConnectors.map((r) => r?.perfil)]
+        .map((v) => String(v || "").trim().toLowerCase())
+        .filter(Boolean)
+    );
+    const tonoOrder = ["general", "empatico", "directo", "mistico"];
+    const tonosSorted = Array.from(tonosSet).sort((a, b) => {
+      const ia = tonoOrder.indexOf(a);
+      const ib = tonoOrder.indexOf(b);
+      if (ia !== -1 || ib !== -1) return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+      return a.localeCompare(b);
+    });
+    const tonoLabels = new Map([
+      ["general", "General"],
+      ["empatico", "Empático"],
+      ["directo", "Directo"],
+      ["mistico", "Místico"]
+    ]);
+    const tonos = tonosSorted.map((value) => ({
+      value,
+      label: tonoLabels.get(value) || (value ? value.charAt(0).toUpperCase() + value.slice(1) : value)
+    }));
+
     res.render("tarot/lectura", {
       title: "Lectura (3 cartas)",
       arcanos,
-      hasArcanos: arcanos.length > 0
+      hasArcanos: arcanos.length > 0,
+      temas,
+      tonos
     });
   } catch (err) {
     next(err);

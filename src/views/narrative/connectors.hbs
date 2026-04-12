@@ -4,10 +4,19 @@
       <h1 class="h3 brand mb-1">Conectores</h1>
       <div class="muted">Filtra por tipo/polaridad y revisa el texto con placeholders.</div>
     </div>
-    <a class="btn btn-outline-light" href="/tarot/lectura">Volver a Lectura</a>
+    <div class="d-flex gap-2 flex-wrap">
+      <form method="POST" action="/tarot/conectores/delete-all" onsubmit="return confirm('Esto borrará TODOS los conectores. ¿Continuar?');">
+        <button class="btn btn-outline-danger" type="submit">Borrar conectores</button>
+      </form>
+      <a class="btn btn-outline-light" href="/tarot/lectura">Volver a Lectura</a>
+    </div>
   </div>
 
   <div class="card p-4">
+    {{#if deleted}}
+      <div class="alert alert-success">Conectores borrados: {{deleted}}</div>
+    {{/if}}
+
     <form method="GET" action="/tarot/conectores" class="row g-3">
       <div class="col-md-4">
         <label class="form-label">Tipo</label>

@@ -263,8 +263,7 @@ async function buildTarotReadingPrompt({ user_data, tirada, tema, preprompt, pre
             contexto: mensaje.contexto,
             perfil_tono: mensaje.perfil_tono,
             polaridad: mensaje.polaridad,
-            sentido: mensaje.sentido,
-            luz_sombra: mensaje.luz_sombra
+            sentido: mensaje.sentido
           }
         : null,
       significado_tema,
@@ -309,8 +308,7 @@ async function buildTarotReadingPrompt({ user_data, tirada, tema, preprompt, pre
           id: c.mensaje_arcano.id,
           perfil_tono: c.mensaje_arcano.perfil_tono,
           polaridad: c.mensaje_arcano.polaridad,
-          sentido: c.mensaje_arcano.sentido,
-          luz_sombra: c.mensaje_arcano.luz_sombra
+          sentido: c.mensaje_arcano.sentido
         }
       : null
   });

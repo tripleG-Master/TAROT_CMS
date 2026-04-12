@@ -228,15 +228,15 @@ async function buildReading({ user, tirada, tema, perfil_tono }) {
 
   const ctx = { nombre: user?.nombre ?? user?.name, genero: user?.genero ?? user?.gender };
 
-  const parts = [
-    intro ? applyPlaceholders(intro.texto, ctx) : "",
-    applyPlaceholders(m1.contenido, ctx),
-    conn12 ? applyPlaceholders(conn12.texto, ctx) : "",
-    applyPlaceholders(m2.contenido, ctx),
-    conn23 ? applyPlaceholders(conn23.texto, ctx) : "",
-    applyPlaceholders(m3.contenido, ctx),
-    cierre ? applyPlaceholders(cierre.texto, ctx) : ""
-  ].filter(Boolean);
+  const reading = {
+    intro: intro ? applyPlaceholders(intro.texto, ctx) : "",
+    pasado: applyPlaceholders(m1.contenido, ctx),
+    presente: applyPlaceholders(m2.contenido, ctx),
+    futuro: applyPlaceholders(m3.contenido, ctx),
+    cierre: cierre ? applyPlaceholders(cierre.texto, ctx) : ""
+  };
+
+  const parts = [reading.intro, reading.pasado, conn12 ? applyPlaceholders(conn12.texto, ctx) : "", reading.presente, conn23 ? applyPlaceholders(conn23.texto, ctx) : "", reading.futuro, reading.cierre].filter(Boolean);
 
   const text = parts.join(" ").replace(/\s+/g, " ").trim();
 
@@ -245,6 +245,7 @@ async function buildReading({ user, tirada, tema, perfil_tono }) {
     tema: context,
     perfil_tono: profile,
     lectura: text,
+    reading,
     debug: {
       cards: {
         pasado: { ...cards.pasado, polaridad: messagePolarityFromOrientation(cards.pasado.orientation), sentido: s1 },

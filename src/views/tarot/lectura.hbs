@@ -33,20 +33,24 @@
       <div class="col-md-3">
         <label class="form-label">Tema</label>
         <select id="tema" name="tema" class="form-select">
-          <option value="amor">Amor</option>
-          <option value="salud">Salud</option>
-          <option value="dinero">Dinero</option>
-          <option value="general" selected>General</option>
+          {{#if temas.length}}
+            {{#each temas}}
+              <option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>
+            {{/each}}
+          {{else}}
+            <option value="" selected disabled>(Sin temas disponibles)</option>
+          {{/if}}
         </select>
       </div>
       <div class="col-md-3">
         <label class="form-label">Tono</label>
         <select id="tono" name="tono" class="form-select">
           <option value="" selected>Auto</option>
-          <option value="general">General</option>
-          <option value="empatico">Empático</option>
-          <option value="directo">Directo</option>
-          <option value="mistico">Místico</option>
+          {{#if tonos.length}}
+            {{#each tonos}}
+              <option value="{{value}}">{{label}}</option>
+            {{/each}}
+          {{/if}}
         </select>
       </div>
       <div class="col-md-3">
