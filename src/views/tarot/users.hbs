@@ -4,7 +4,10 @@
       <h1 class="h3 brand mb-1">Usuarios</h1>
       <div class="muted">Usuarios registrados y/o con uso detectado. Uso del día (UTC): {{period}}</div>
     </div>
-    <a class="btn btn-outline-light" href="/tarot/calculo">Volver</a>
+    <div class="d-flex gap-2 flex-wrap">
+      <button class="btn btn-outline-info" type="button" data-bs-toggle="modal" data-bs-target="#registerUserModal">Registrar usuario</button>
+      <a class="btn btn-outline-light" href="/tarot/calculo">Volver</a>
+    </div>
   </div>
 
   <div class="card p-3">
@@ -57,3 +60,170 @@
   </div>
 </main>
 
+<div class="modal fade" id="registerUserModal" tabindex="-1" aria-labelledby="registerUserModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content text-bg-dark">
+      <div class="modal-header border-secondary">
+        <h5 class="modal-title" id="registerUserModalLabel">Registrar nuevo usuario</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">External ID</label>
+            <div class="input-group">
+              <input id="regExternalId" type="text" class="form-control" placeholder="ANDROID_ID / UUID" />
+              <button class="btn btn-outline-secondary" type="button" id="regGenerateExternalId">Generar</button>
+            </div>
+            <div class="form-text">Simula el ANDROID_ID. Si está vacío, el backend generará un UUID, pero no podrás “reconocer” el dispositivo.</div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">API Token</label>
+            <input id="regApiToken" type="password" class="form-control" placeholder="Bearer..." />
+            <div class="form-text">Solo requerido si el backend tiene API_TOKEN configurado.</div>
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label">Nombre</label>
+            <input id="regName" type="text" class="form-control" placeholder="Carlos" />
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Género</label>
+            <select id="regGender" class="form-select">
+              <option value="mujer">Mujer</option>
+              <option value="hombre" selected>Hombre</option>
+              <option value="neutro">Neutro</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Fecha nacimiento</label>
+            <input id="regBirthdate" type="date" class="form-control" />
+          </div>
+
+          <div class="col-12 d-flex gap-2 flex-wrap">
+            <button class="btn btn-outline-secondary" type="button" id="regFillSample">Rellenar ejemplo</button>
+            <button class="btn btn-mystic text-dark fw-semibold" type="button" id="regSubmit">Registrar (POST /api/register)</button>
+          </div>
+
+          <div class="col-12">
+            <div id="regError" class="alert alert-danger d-none mb-0"></div>
+            <div id="regOk" class="alert alert-success d-none mb-0">OK</div>
+          </div>
+
+          <div class="col-12">
+            <label class="form-label">Request</label>
+            <textarea id="regRequest" class="form-control" rows="6" spellcheck="false" readonly></textarea>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Response</label>
+            <textarea id="regResponse" class="form-control" rows="10" spellcheck="false" readonly></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer border-secondary">
+        <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cerrar</button>
+        <button type="button" class="btn btn-outline-info" id="regReloadUsers">Recargar tabla</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    const storedToken = localStorage.getItem("tarotCmsApiToken") || "";
+    const apiTokenInput = document.getElementById("regApiToken");
+    const externalIdInput = document.getElementById("regExternalId");
+    const nameInput = document.getElementById("regName");
+    const genderInput = document.getElementById("regGender");
+    const birthdateInput = document.getElementById("regBirthdate");
+    const fillSampleBtn = document.getElementById("regFillSample");
+    const generateExternalIdBtn = document.getElementById("regGenerateExternalId");
+    const submitBtn = document.getElementById("regSubmit");
+    const reloadBtn = document.getElementById("regReloadUsers");
+    const reqArea = document.getElementById("regRequest");
+    const resArea = document.getElementById("regResponse");
+    const errBox = document.getElementById("regError");
+    const okBox = document.getElementById("regOk");
+
+    if (apiTokenInput && storedToken) apiTokenInput.value = storedToken;
+
+    function headers() {
+      const token = apiTokenInput && apiTokenInput.value ? String(apiTokenInput.value) : "";
+      localStorage.setItem("tarotCmsApiToken", token);
+      const h = { "Accept": "application/json", "Content-Type": "application/json" };
+      if (token) h["Authorization"] = "Bearer " + token;
+      return h;
+    }
+
+    function showError(message) {
+      if (errBox) {
+        errBox.textContent = message || "Error";
+        errBox.classList.remove("d-none");
+      }
+      if (okBox) okBox.classList.add("d-none");
+    }
+
+    function showOk() {
+      if (okBox) okBox.classList.remove("d-none");
+      if (errBox) errBox.classList.add("d-none");
+    }
+
+    function setAreas(req, res) {
+      if (reqArea) reqArea.value = req ? JSON.stringify(req, null, 2) : "";
+      if (resArea) resArea.value = res ? JSON.stringify(res, null, 2) : "";
+    }
+
+    function randomHex(len) {
+      const chars = "0123456789abcdef";
+      let out = "";
+      for (let i = 0; i < len; i += 1) out += chars[Math.floor(Math.random() * chars.length)];
+      return out;
+    }
+
+    function generateExternalId() {
+      if (window.crypto && typeof window.crypto.randomUUID === "function") return window.crypto.randomUUID();
+      return "web-" + randomHex(32);
+    }
+
+    function fillSample() {
+      if (!externalIdInput.value) externalIdInput.value = generateExternalId();
+      if (!nameInput.value) nameInput.value = "Carlos";
+      if (!birthdateInput.value) birthdateInput.value = "1994-08-21";
+      if (!genderInput.value) genderInput.value = "hombre";
+    }
+
+    if (fillSampleBtn) fillSampleBtn.addEventListener("click", fillSample);
+    if (generateExternalIdBtn) generateExternalIdBtn.addEventListener("click", function () { externalIdInput.value = generateExternalId(); });
+    if (reloadBtn) reloadBtn.addEventListener("click", function () { window.location.reload(); });
+
+    if (submitBtn) {
+      submitBtn.addEventListener("click", async function () {
+        try {
+          const payload = {
+            external_id: String(externalIdInput.value || "").trim(),
+            name: String(nameInput.value || "").trim(),
+            genero: String(genderInput.value || "").trim(),
+            birthdate: String(birthdateInput.value || "").trim()
+          };
+
+          setAreas(payload, null);
+
+          const res = await fetch("/api/register", {
+            method: "POST",
+            headers: headers(),
+            body: JSON.stringify(payload)
+          });
+          const data = await res.json().catch(() => null);
+          setAreas(payload, data);
+
+          if (res.status === 401) return showError("Unauthorized. Pega el API token para usar /api.");
+          if (!res.ok || !data || data.ok !== true) return showError((data && data.error) || ("HTTP " + res.status));
+
+          showOk();
+        } catch (e) {
+          showError(e && e.message ? e.message : "Error de red");
+        }
+      });
+    }
+  })();
+</script>

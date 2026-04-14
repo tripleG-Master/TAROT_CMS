@@ -8,8 +8,10 @@ const healthRoutes = require("./healthRoutes");
 
 const router = express.Router();
 
+
 router.use("/health", healthRoutes);
 router.use("/zodiac", zodiacRoutes);
+
 router.post("/register", registerController.register);
 router.get("/users/:id/profile", registerController.getProfile);
 router.post("/entitlements/set", registerController.setEntitlement);
@@ -17,6 +19,7 @@ router.post("/entitlements/set", registerController.setEntitlement);
 router.post("/narrative/seed", narrativeController.seed);
 router.post("/narrative/three-cards", narrativeController.threeCards);
 router.post("/tarot/daily", narrativeController.dailyTarot);
+
 router.get("/gemini/models", geminiController.listModels);
 router.post("/gemini/generate", geminiController.generate);
 router.post("/gemini/tarot-reading", geminiController.tarotReading);
