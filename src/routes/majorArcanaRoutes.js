@@ -18,7 +18,7 @@ const uploadImage = multer({
 
 router.get("/", controller.list);
 router.get("/new", controller.showCreateForm);
-router.post("/", uploadImage.single("imagen_file"), controller.create);
+router.post("/", uploadImage.fields([{ name: "imagen_file", maxCount: 1 }, { name: "galeria_files", maxCount: 12 }]), controller.create);
 router.get("/import", controller.showImportForm);
 router.post("/import", controller.importJson);
 router.post("/import/csv", controller.importCsv);
@@ -40,7 +40,7 @@ router.post("/export/builder", controller.previewExportBuilder);
 router.get("/export/custom/arcanos.json", controller.exportJsonCustom);
 router.get("/:id", controller.show);
 router.get("/:id/edit", controller.showEditForm);
-router.put("/:id", uploadImage.single("imagen_file"), controller.update);
+router.put("/:id", uploadImage.fields([{ name: "imagen_file", maxCount: 1 }, { name: "galeria_files", maxCount: 12 }]), controller.update);
 router.delete("/:id", controller.remove);
 
 module.exports = router;

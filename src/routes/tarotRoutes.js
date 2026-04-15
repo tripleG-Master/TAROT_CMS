@@ -10,6 +10,8 @@ router.get("/gemini", controller.showGemini);
 router.get("/gemini/generations", controller.showGeminiGenerations);
 router.get("/gemini/templates", controller.showGeminiTemplates);
 router.get("/users", controller.showUsers);
+router.get("/content", controller.showContent);
+router.post("/content/app-config", controller.updateAppConfig);
 router.get("/conectores", narrativeController.showConnectors);
 router.get("/mensajes", narrativeController.showMessages);
 router.post("/conectores/delete-all", narrativeController.deleteAllConnectors);

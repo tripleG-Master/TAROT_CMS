@@ -31,6 +31,19 @@
       </div>
 
       <div class="col-md-3">
+        <label class="form-label">Mazo</label>
+        <select id="deckId" name="deck_id" class="form-select">
+          {{#if decks.length}}
+            {{#each decks}}
+              <option value="{{id}}" {{#if (eq id ../defaultDeckId)}}selected{{/if}}>{{nombre}}</option>
+            {{/each}}
+          {{else}}
+            <option value="" selected disabled>(Sin mazos)</option>
+          {{/if}}
+        </select>
+      </div>
+
+      <div class="col-md-3">
         <label class="form-label">Tema</label>
         <select id="tema" name="tema" class="form-select">
           {{#if temas.length}}
@@ -186,6 +199,7 @@
     const nameInput = document.getElementById("name");
     const genderInput = document.getElementById("gender");
     const birthdateInput = document.getElementById("birthdate");
+    const deckIdInput = document.getElementById("deckId");
     const temaInput = document.getElementById("tema");
     const tonoInput = document.getElementById("tono");
     const readingModeInput = document.getElementById("readingMode");
@@ -212,6 +226,32 @@
     const readingUsage = document.getElementById("readingUsage");
     const readingDebug = document.getElementById("readingDebug");
     const includePrompt = document.getElementById("includePrompt");
+
+    const deckData = {{#if decks.length}}{{{json decks}}}{{else}}[]{{/if}};
+    const deckById = new Map((deckData || []).map((d) => [String(d.id), d]));
+    const originalOptions = Array.from(cardPast.options || []).map((o) => ({ value: o.value, text: o.text }));
+
+    function applyDeckFilter() {
+      const id = deckIdInput ? String(deckIdInput.value || "") : "";
+      const deck = deckById.get(id);
+      const allowed = deck && Array.isArray(deck.card_numeros) ? new Set(deck.card_numeros.map(String)) : null;
+      const rebuild = (selectEl) => {
+        if (!selectEl) return;
+        const prev = String(selectEl.value || "");
+        selectEl.innerHTML = "";
+        const opts = allowed ? originalOptions.filter((o) => allowed.has(String(o.value))) : originalOptions;
+        for (const o of opts) {
+          const el = document.createElement("option");
+          el.value = String(o.value);
+          el.textContent = String(o.text);
+          selectEl.appendChild(el);
+        }
+        if (opts.some((o) => String(o.value) === prev)) selectEl.value = prev;
+      };
+      rebuild(cardPast);
+      rebuild(cardPresent);
+      rebuild(cardFuture);
+    }
 
     if (storedToken) tokenInput.value = storedToken;
 
@@ -322,6 +362,13 @@
       });
     }
 
+    if (deckIdInput) {
+      applyDeckFilter();
+      deckIdInput.addEventListener("change", function () {
+        applyDeckFilter();
+      });
+    }
+
     seedBtn.addEventListener("click", async function () {
       try {
         const res = await fetch("/api/narrative/seed", { method: "POST", headers: headers() });
@@ -347,6 +394,7 @@
             genero: genderInput.value || "",
             nacimiento: birthdateInput.value || ""
           },
+          deck_id: deckIdInput ? (deckIdInput.value || "") : "",
           tema: temaInput.value || "general",
           perfil_tono: tonoInput.value || "",
           pregunta: questionInput.value || "",

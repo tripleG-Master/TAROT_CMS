@@ -1,6 +1,7 @@
 const { Client } = require("pg");
 const { Sequelize, DataTypes } = require("sequelize");
 const { initModels } = require("./models");
+const { defaultAppConfigPayload, normalizeAppConfigPayload, appConfigEtag, APP_CONFIG_SCHEMA_VERSION } = require("./services/appConfig");
 
 function buildSequelize(databaseName) {
   if (process.env.DATABASE_URL) return new Sequelize(process.env.DATABASE_URL, { logging: false });
@@ -276,9 +277,89 @@ async function initDb() {
       "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
     CREATE UNIQUE INDEX IF NOT EXISTS idx_usage_counters_user_period ON usage_counters (user_id, period);
+
+    CREATE TABLE IF NOT EXISTS decks (
+      id SERIAL PRIMARY KEY,
+      slug TEXT NOT NULL DEFAULT '',
+      nombre TEXT NOT NULL DEFAULT '',
+      descripcion TEXT NOT NULL DEFAULT '',
+      is_active BOOLEAN NOT NULL DEFAULT true,
+      extra JSONB NOT NULL DEFAULT '{}'::jsonb,
+      "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      "deletedAt" TIMESTAMPTZ
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_decks_slug ON decks (slug);
+
+    CREATE TABLE IF NOT EXISTS deck_cards (
+      id SERIAL PRIMARY KEY,
+      deck_id INTEGER NOT NULL,
+      card_kind TEXT NOT NULL DEFAULT 'major',
+      card_numero INTEGER NOT NULL,
+      enabled BOOLEAN NOT NULL DEFAULT true,
+      imagen_url TEXT NOT NULL DEFAULT '',
+      imagen_thumb_url TEXT NOT NULL DEFAULT '',
+      extra JSONB NOT NULL DEFAULT '{}'::jsonb,
+      "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      "deletedAt" TIMESTAMPTZ
+    );
+    CREATE INDEX IF NOT EXISTS idx_deck_cards_lookup ON deck_cards (deck_id, card_kind, card_numero);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_deck_cards_unique ON deck_cards (deck_id, card_kind, card_numero);
+
+    CREATE TABLE IF NOT EXISTS app_config (
+      id INTEGER PRIMARY KEY DEFAULT 1,
+      schema_version INTEGER NOT NULL DEFAULT 1,
+      payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+      etag TEXT NOT NULL DEFAULT '',
+      "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
   `);
 
   await sequelize.sync();
+
+  const Deck = models.Deck;
+  const DeckCard = models.DeckCard;
+  if (Deck && DeckCard) {
+    const count = await Deck.count();
+    if (count === 0) {
+      const created = await Deck.create({ slug: "default", nombre: "Default", descripcion: "", is_active: true, extra: {} });
+      const deck_id = created.id;
+      const cards = Array.from({ length: 22 }, (_, i) => ({
+        deck_id,
+        card_kind: "major",
+        card_numero: i,
+        enabled: true,
+        imagen_url: "",
+        imagen_thumb_url: "",
+        extra: {}
+      }));
+      await DeckCard.bulkCreate(cards);
+    }
+  }
+
+  const AppConfig = models.AppConfig;
+  if (AppConfig) {
+    const row = await AppConfig.findByPk(1);
+    if (!row) {
+      const payload = defaultAppConfigPayload();
+      await AppConfig.create({ id: 1, schema_version: APP_CONFIG_SCHEMA_VERSION, payload, etag: appConfigEtag(payload) });
+    } else {
+      const normalized = normalizeAppConfigPayload(row.payload);
+      const nextEtag = appConfigEtag(normalized);
+      const changed =
+        row.schema_version !== APP_CONFIG_SCHEMA_VERSION ||
+        JSON.stringify(row.payload || {}) !== JSON.stringify(normalized) ||
+        String(row.etag || "") !== nextEtag;
+      if (changed) {
+        row.schema_version = APP_CONFIG_SCHEMA_VERSION;
+        row.payload = normalized;
+        row.etag = nextEtag;
+        await row.save();
+      }
+    }
+  }
 }
 
 module.exports = { initDb };

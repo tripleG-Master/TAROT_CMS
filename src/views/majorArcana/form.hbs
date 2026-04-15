@@ -47,8 +47,38 @@
         <div class="col-12">
           <label class="form-label">Subir imagen (genera thumbnail)</label>
           <input class="form-control" type="file" name="imagen_file" accept="image/*" />
-          <div class="muted mt-1">Si subes un archivo, se guardará en /public/img y se generará un thumbnail en /public/img/thumbs.</div>
+          <div class="muted mt-1">Si subes un archivo, se guardará en /public/img como WEBP (calidad >= 80) y generará thumbnail WEBP.</div>
         </div>
+
+        <div class="col-12">
+          <label class="form-label">Galería de imágenes adicionales (múltiple)</label>
+          <input class="form-control" type="file" name="galeria_files" accept="image/*" multiple />
+          <div class="muted mt-1">Puedes subir varias imágenes del mismo arcano. Todas se convierten a WEBP (calidad >= 80).</div>
+        </div>
+
+        {{#if isEdit}}
+          <div class="col-12">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="clear_gallery" name="clear_gallery" value="1" />
+              <label class="form-check-label" for="clear_gallery">Limpiar galería actual antes de guardar</label>
+            </div>
+          </div>
+        {{/if}}
+
+        {{#if arcano.image_gallery.length}}
+          <div class="col-12">
+            <div class="fw-semibold mb-2">Galería actual</div>
+            <div class="row g-2">
+              {{#each arcano.image_gallery}}
+                <div class="col-md-3 col-6">
+                  <a href="{{imagen_url}}" target="_blank" rel="noreferrer">
+                    <img src="{{#if imagen_thumb_url}}{{imagen_thumb_url}}{{else}}{{imagen_url}}{{/if}}" alt="imagen" class="img-fluid rounded border border-secondary" />
+                  </a>
+                </div>
+              {{/each}}
+            </div>
+          </div>
+        {{/if}}
 
         <div class="col-12">
           <hr class="border-secondary my-2" />

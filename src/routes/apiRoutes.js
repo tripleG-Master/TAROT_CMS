@@ -3,6 +3,7 @@ const majorArcanaController = require("../controllers/majorArcanaController");
 const geminiController = require("../controllers/geminiController");
 const narrativeController = require("../controllers/narrativeController");
 const registerController = require("../controllers/registerController");
+const contentController = require("../controllers/contentController");
 const zodiacRoutes = require("./zodiacRoutes");
 const healthRoutes = require("./healthRoutes");
 
@@ -15,6 +16,9 @@ router.use("/zodiac", zodiacRoutes);
 router.post("/register", registerController.register);
 router.get("/users/:id/profile", registerController.getProfile);
 router.post("/entitlements/set", registerController.setEntitlement);
+
+router.get("/app-config", contentController.getAppConfig);
+router.get("/content/manifest", contentController.getManifest);
 
 router.post("/narrative/seed", narrativeController.seed);
 router.post("/narrative/three-cards", narrativeController.threeCards);

@@ -73,7 +73,7 @@ async function writeThumbFromFilePath(inputPath, outThumbPath) {
   ensureDirs();
   await sharp(inputPath)
     .resize({ width: 256, height: 256, fit: "cover" })
-    .webp({ quality: 72 })
+    .webp({ quality: 80 })
     .toFile(outThumbPath);
 }
 
@@ -87,7 +87,7 @@ async function saveMinorImageAndThumb({ numero, buffer }) {
   const thumbPath = path.join(minorThumbDir, thumbFile);
 
   await sharp(buffer).resize({ width: 1024, withoutEnlargement: true }).webp({ quality: 82 }).toFile(imagePath);
-  await sharp(buffer).resize({ width: 256, height: 256, fit: "cover" }).webp({ quality: 72 }).toFile(thumbPath);
+  await sharp(buffer).resize({ width: 256, height: 256, fit: "cover" }).webp({ quality: 80 }).toFile(thumbPath);
 
   return {
     imagen_url: `/public/img/minor/${imageFile}`,

@@ -2,12 +2,22 @@ const { buildReading } = require("../services/narrativeEngine");
 const { seedNarrativeData } = require("../seed/narrativeSeed");
 const db = require("../db");
 const crypto = require("node:crypto");
+const { assertCardsInDeck, getDeckAllowedCardNumeros, resolveDeck } = require("../services/decks");
 
 async function threeCards(req, res) {
   const user = req.body?.user_data ?? req.body?.user ?? {};
   const tirada = req.body?.tirada ?? {};
   const tema = req.body?.tema ?? req.body?.contexto ?? "general";
   const perfil_tono = req.body?.perfil_tono ?? req.body?.tono ?? "";
+  const deck_id = req.body?.deck_id ?? req.body?.deckId;
+
+  const numeros = Array.isArray(tirada?.cards)
+    ? tirada.cards.map((c) => Number(c?.id ?? c?.numero ?? c?.arcano_id)).filter((n) => Number.isInteger(n))
+    : [];
+  if (deck_id) {
+    const check = await assertCardsInDeck({ deck_id, card_kind: "major", numeros });
+    if (!check.ok) return res.status(400).json({ ok: false, error: check.error });
+  }
 
   const result = await buildReading({ user, tirada, tema, perfil_tono });
   if (!result.ok) return res.status(400).json(result);
@@ -81,12 +91,19 @@ async function dailyTarot(req, res) {
       genero: profile ? profile.genero : "neutro"
     };
 
+    const deck_id = req.body?.deck_id ?? req.body?.deckId ?? req.query?.deck_id ?? req.query?.deckId;
+    const deck = await resolveDeck(deck_id);
+
     const dayKey = todayInTimezoneDateOnly(timezone);
     const seed = `${external_id || user_id}|${dayKey}|${locale}`;
     const hashHex = crypto.createHash("sha256").update(seed).digest("hex");
 
+    const fromDeck = deck ? await getDeckAllowedCardNumeros(deck.id, "major") : [];
     const arcanaRows = await db.MajorArcana.findAll({ attributes: ["numero"], order: [["numero", "ASC"]], raw: true });
-    const pool = arcanaRows.length ? arcanaRows.map((r) => Number(r.numero)).filter((n) => Number.isInteger(n)) : Array.from({ length: 22 }, (_, i) => i);
+    const canonicalPool = arcanaRows.length
+      ? arcanaRows.map((r) => Number(r.numero)).filter((n) => Number.isInteger(n))
+      : Array.from({ length: 22 }, (_, i) => i);
+    const pool = fromDeck.length ? fromDeck : canonicalPool;
     const picked = pickDistinctFromHash(pool, 3, hashHex);
     if (picked.length !== 3) return res.status(400).json({ ok: false, error: "No hay suficientes arcanos para generar la tirada." });
 
@@ -130,6 +147,7 @@ async function dailyTarot(req, res) {
       timezone,
       locale,
       user_id,
+      deck: deck ? { id: deck.id, slug: deck.slug, nombre: deck.nombre } : undefined,
       message: result?.reading?.intro || result?.lectura || "",
       cards: picked,
       reading: result.reading || undefined,

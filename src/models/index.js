@@ -8,6 +8,9 @@ const defineUser = require("./User");
 const defineUserProfile = require("./UserProfile");
 const defineEntitlement = require("./Entitlement");
 const defineUsageCounter = require("./UsageCounter");
+const defineDeck = require("./Deck");
+const defineDeckCard = require("./DeckCard");
+const defineAppConfig = require("./AppConfig");
 
 function initModels(sequelize, DataTypes) {
   const MajorArcana = defineMajorArcana(sequelize, DataTypes);
@@ -20,6 +23,9 @@ function initModels(sequelize, DataTypes) {
   const UserProfile = defineUserProfile(sequelize, DataTypes);
   const Entitlement = defineEntitlement(sequelize, DataTypes);
   const UsageCounter = defineUsageCounter(sequelize, DataTypes);
+  const Deck = defineDeck(sequelize, DataTypes);
+  const DeckCard = defineDeckCard(sequelize, DataTypes);
+  const AppConfig = defineAppConfig(sequelize, DataTypes);
 
   User.hasOne(UserProfile, { foreignKey: "user_id" });
   UserProfile.belongsTo(User, { foreignKey: "user_id" });
@@ -30,7 +36,24 @@ function initModels(sequelize, DataTypes) {
   User.hasMany(UsageCounter, { foreignKey: "user_id" });
   UsageCounter.belongsTo(User, { foreignKey: "user_id" });
 
-  return { MajorArcana, MinorArcana, Connector, ArcanaMessage, GeminiGeneration, GeminiTemplate, User, UserProfile, Entitlement, UsageCounter };
+  Deck.hasMany(DeckCard, { foreignKey: "deck_id" });
+  DeckCard.belongsTo(Deck, { foreignKey: "deck_id" });
+
+  return {
+    MajorArcana,
+    MinorArcana,
+    Connector,
+    ArcanaMessage,
+    GeminiGeneration,
+    GeminiTemplate,
+    User,
+    UserProfile,
+    Entitlement,
+    UsageCounter,
+    Deck,
+    DeckCard,
+    AppConfig
+  };
 }
 
 module.exports = { initModels };

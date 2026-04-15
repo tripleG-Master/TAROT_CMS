@@ -1,4 +1,5 @@
 const db = require("../db");
+const { normalizeAppConfigPayload, appConfigEtag, APP_CONFIG_SCHEMA_VERSION } = require("../services/appConfig");
 
 function showCalculo(req, res) {
   res.render("tarot/calculo", {
@@ -13,6 +14,34 @@ async function showLectura(req, res, next) {
       order: [["numero", "ASC"]],
       raw: true
     });
+
+    const decks = await db.models.Deck.findAll({
+      where: { is_active: true },
+      attributes: ["id", "slug", "nombre"],
+      order: [["id", "ASC"]],
+      raw: true
+    });
+    const deckCards = decks.length
+      ? await db.models.DeckCard.findAll({
+          where: { deck_id: decks.map((d) => d.id), card_kind: "major", enabled: true },
+          attributes: ["deck_id", "card_numero"],
+          order: [["deck_id", "ASC"], ["card_numero", "ASC"]],
+          raw: true
+        })
+      : [];
+    const byDeck = new Map();
+    for (const r of deckCards) {
+      const id = Number(r.deck_id);
+      if (!byDeck.has(id)) byDeck.set(id, []);
+      byDeck.get(id).push(Number(r.card_numero));
+    }
+    const deckOptions = decks.map((d) => ({
+      id: d.id,
+      slug: d.slug,
+      nombre: d.nombre,
+      card_numeros: byDeck.get(d.id) || []
+    }));
+    const defaultDeck = deckOptions.find((d) => d.slug === "default") || deckOptions[0] || null;
 
     const temaRows = await db.models.ArcanaMessage.findAll({
       attributes: ["contexto"],
@@ -76,7 +105,9 @@ async function showLectura(req, res, next) {
       arcanos,
       hasArcanos: arcanos.length > 0,
       temas,
-      tonos
+      tonos,
+      decks: deckOptions,
+      defaultDeckId: defaultDeck ? defaultDeck.id : null
     });
   } catch (err) {
     next(err);
@@ -185,4 +216,69 @@ async function showUsers(req, res, next) {
   }
 }
 
-module.exports = { showCalculo, showLectura, showGemini, showGeminiGenerations, showGeminiTemplates, showUsers };
+async function showContent(req, res, next) {
+  try {
+    const row = await db.models.AppConfig.findByPk(1, { raw: true });
+    const payload = normalizeAppConfigPayload(row?.payload || {});
+    const payloadText = JSON.stringify(payload, null, 2);
+    res.render("tarot/content", {
+      title: "Contenido App",
+      saved: String(req.query?.saved || "").trim() === "1",
+      error: String(req.query?.error || "").trim() || "",
+      app_config: {
+        id: 1,
+        schema_version: row?.schema_version ?? APP_CONFIG_SCHEMA_VERSION,
+        etag: appConfigEtag(payload),
+        updatedAt: row?.updatedAt || null
+      },
+      payloadText
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function updateAppConfig(req, res) {
+  try {
+    const raw = String(req.body?.payload || "").trim();
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return res.redirect(`/tarot/content?error=${encodeURIComponent("JSON inválido")}`);
+    }
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return res.redirect(`/tarot/content?error=${encodeURIComponent("payload debe ser un objeto JSON")}`);
+    }
+
+    const normalized = normalizeAppConfigPayload(parsed);
+    normalized.updated_at = new Date().toISOString();
+    const schema_version = APP_CONFIG_SCHEMA_VERSION;
+    const etag = appConfigEtag(normalized);
+
+    const row = await db.models.AppConfig.findByPk(1);
+    if (row) {
+      row.schema_version = schema_version;
+      row.payload = normalized;
+      row.etag = etag;
+      await row.save();
+    } else {
+      await db.models.AppConfig.create({ id: 1, schema_version, payload: normalized, etag });
+    }
+
+    return res.redirect("/tarot/content?saved=1");
+  } catch (err) {
+    return res.redirect(`/tarot/content?error=${encodeURIComponent(err?.message || "error guardando")}`);
+  }
+}
+
+module.exports = {
+  showCalculo,
+  showLectura,
+  showGemini,
+  showGeminiGenerations,
+  showGeminiTemplates,
+  showUsers,
+  showContent,
+  updateAppConfig
+};

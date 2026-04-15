@@ -33,6 +33,20 @@
             <div class="muted">Sin URL de imagen.</div>
           {{/if}}
         {{/if}}
+
+        {{#if arcano.image_gallery_resolved.length}}
+          <hr class="border-secondary my-3" />
+          <div class="fw-semibold mb-2">Galería ({{arcano.image_gallery_resolved.length}})</div>
+          <div class="row g-2">
+            {{#each arcano.image_gallery_resolved}}
+              <div class="col-6">
+                <a href="{{imagen_url}}" target="_blank" rel="noreferrer">
+                  <img src="{{#if imagen_thumb_url}}{{imagen_thumb_url}}{{else}}{{imagen_url}}{{/if}}" alt="galeria" class="img-fluid rounded border border-secondary" />
+                </a>
+              </div>
+            {{/each}}
+          </div>
+        {{/if}}
       </div>
     </div>
 

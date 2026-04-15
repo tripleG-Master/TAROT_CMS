@@ -1,6 +1,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const sharp = require("sharp");
+const crypto = require("node:crypto");
 const db = require("../db");
 
 const imgDir = path.join(__dirname, "..", "..", "public", "img");
@@ -138,28 +139,81 @@ async function writeThumbFromFilePath(inputPath, thumbPath) {
   await sharp(inputPath)
     .rotate()
     .resize({ width: 256, withoutEnlargement: true })
-    .webp({ quality: 70 })
+    .webp({ quality: 80 })
     .toFile(thumbPath);
 }
 
-async function saveImageAndThumb({ numero, nombre, buffer }) {
-  ensureDirs();
+function buildImageBase(numero, nombre) {
   let base = Number.isInteger(numero) ? String(numero) : slugifyDash(nombre);
   base = imageAliases[base] || base;
+  return base;
+}
 
-  const imageFile = `${base}.webp`;
-  const thumbFile = `${base}.thumb.webp`;
+async function saveImageAndThumb({ numero, nombre, buffer, variant = "" }) {
+  ensureDirs();
+  const base = buildImageBase(numero, nombre);
+  const suffix = String(variant || "").trim();
+  const finalBase = suffix ? `${base}__${suffix}` : base;
+
+  const imageFile = `${finalBase}.webp`;
+  const thumbFile = `${finalBase}.thumb.webp`;
 
   const imagePath = path.join(imgDir, imageFile);
   const thumbPath = path.join(thumbDir, thumbFile);
 
   await writeImageWebp(buffer, imagePath, 1600, 82);
-  await writeImageWebp(buffer, thumbPath, 256, 70);
+  await writeImageWebp(buffer, thumbPath, 256, 80);
 
   return {
     imagen_url: `/public/img/${imageFile}`,
     imagen_thumb_url: `/public/img/thumbs/${thumbFile}`
   };
+}
+
+function normalizeGallery(extra) {
+  const raw = extra && typeof extra === "object" ? extra.image_gallery : null;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((it) => ({
+      imagen_url: String(it?.imagen_url || "").trim(),
+      imagen_thumb_url: String(it?.imagen_thumb_url || "").trim()
+    }))
+    .filter((it) => it.imagen_url);
+}
+
+function mergeGallery(list) {
+  const out = [];
+  const seen = new Set();
+  for (const it of list || []) {
+    const url = String(it?.imagen_url || "").trim();
+    if (!url || seen.has(url)) continue;
+    seen.add(url);
+    out.push({
+      imagen_url: url,
+      imagen_thumb_url: String(it?.imagen_thumb_url || "").trim()
+    });
+  }
+  return out;
+}
+
+function pickUploadedFiles(req, fieldName) {
+  if (req?.files && Array.isArray(req.files[fieldName])) return req.files[fieldName].filter((f) => f?.buffer);
+  if (fieldName === "imagen_file" && req?.file?.buffer) return [req.file];
+  return [];
+}
+
+async function saveGalleryImages({ numero, nombre, files }) {
+  const list = Array.isArray(files) ? files : [];
+  const stamp = Date.now();
+  const out = [];
+  for (let i = 0; i < list.length; i += 1) {
+    const f = list[i];
+    if (!f?.buffer) continue;
+    const variant = `g${stamp}_${i + 1}`;
+    const saved = await saveImageAndThumb({ numero, nombre, buffer: f.buffer, variant });
+    out.push(saved);
+  }
+  return out;
 }
 
 async function ensureThumbForLocalImage(numero, nombre, imagenUrl) {
@@ -1429,20 +1483,80 @@ async function deleteAllArcanaMessages(req, res) {
 
 async function list(req, res, next) {
   try {
-    const arcanosRaw = await db.MajorArcana.findAll({ order: [["numero", "ASC"]], raw: true });
+    const decks = await db.models.Deck.findAll({
+      where: { is_active: true },
+      attributes: ["id", "slug", "nombre"],
+      order: [["id", "ASC"]],
+      raw: true
+    });
+
+    if (!decks || decks.length === 0) {
+      const arcanosRaw = await db.MajorArcana.findAll({ order: [["numero", "ASC"]], raw: true });
+      const arcanos = [];
+      for (const a of arcanosRaw) {
+        const imagen_url_resolved = resolveImageUrl(a.numero, a.nombre, a.imagen_url);
+        let imagen_thumb_url_resolved = resolveThumbUrl(a.numero, a.nombre, a.imagen_thumb_url, imagen_url_resolved);
+        if (!imagen_thumb_url_resolved && String(imagen_url_resolved).startsWith("/public/img/")) {
+          imagen_thumb_url_resolved = await ensureThumbForLocalImage(a.numero, a.nombre, imagen_url_resolved);
+        }
+        arcanos.push({ ...a, imagen_url_resolved, imagen_thumb_url_resolved });
+      }
+      return res.render("majorArcana/index", {
+        title: "Cartas",
+        arcanos,
+        hasArcanos: arcanos.length > 0,
+        decks: [],
+        selectedDeckId: null
+      });
+    }
+
+    const deckIdRaw = req.query?.deck_id ?? req.query?.deckId;
+    const deckId = Number(deckIdRaw);
+    const defaultDeck = decks.find((d) => d.slug === "default") || decks[0] || null;
+    const selectedDeck =
+      Number.isInteger(deckId) && deckId > 0 ? decks.find((d) => d.id === deckId) || defaultDeck : defaultDeck;
+
+    const deckCards = selectedDeck
+      ? await db.models.DeckCard.findAll({
+          where: { deck_id: selectedDeck.id, card_kind: "major", enabled: true },
+          attributes: ["card_numero", "imagen_url", "imagen_thumb_url", "extra"],
+          order: [["card_numero", "ASC"]],
+          raw: true
+        })
+      : [];
+
+    const numeros = deckCards.map((r) => Number(r.card_numero)).filter((n) => Number.isInteger(n));
+    const byNumeroDeck = new Map(deckCards.map((r) => [Number(r.card_numero), r]));
+
+    const arcanosRaw = numeros.length
+      ? await db.MajorArcana.findAll({ where: { numero: numeros }, order: [["numero", "ASC"]], raw: true })
+      : [];
+
     const arcanos = [];
     for (const a of arcanosRaw) {
-      const imagen_url_resolved = resolveImageUrl(a.numero, a.nombre, a.imagen_url);
-      let imagen_thumb_url_resolved = resolveThumbUrl(a.numero, a.nombre, a.imagen_thumb_url, imagen_url_resolved);
-      if (!imagen_thumb_url_resolved && String(imagen_url_resolved).startsWith("/public/img/")) {
-        imagen_thumb_url_resolved = await ensureThumbForLocalImage(a.numero, a.nombre, imagen_url_resolved);
+      const override = byNumeroDeck.get(a.numero) || null;
+      const overrideUrl = override ? String(override.imagen_url || "").trim() : "";
+      const overrideThumb = override ? String(override.imagen_thumb_url || "").trim() : "";
+
+      const baseImagenUrl = overrideUrl || resolveImageUrl(a.numero, a.nombre, a.imagen_url);
+      let baseThumbUrl = overrideThumb || resolveThumbUrl(a.numero, a.nombre, a.imagen_thumb_url, baseImagenUrl);
+      if (!baseThumbUrl && String(baseImagenUrl).startsWith("/public/img/")) {
+        baseThumbUrl = await ensureThumbForLocalImage(a.numero, a.nombre, baseImagenUrl);
       }
-      arcanos.push({ ...a, imagen_url_resolved, imagen_thumb_url_resolved });
+
+      arcanos.push({
+        ...a,
+        imagen_url_resolved: baseImagenUrl,
+        imagen_thumb_url_resolved: baseThumbUrl
+      });
     }
+
     res.render("majorArcana/index", {
-      title: "Arcanos Mayores",
+      title: "Cartas",
       arcanos,
-      hasArcanos: arcanos.length > 0
+      hasArcanos: arcanos.length > 0,
+      decks,
+      selectedDeckId: selectedDeck ? selectedDeck.id : null
     });
   } catch (err) {
     next(err);
@@ -1496,13 +1610,23 @@ async function create(req, res, next) {
       });
     }
 
-    if (req.file?.buffer) {
-      const saved = await saveImageAndThumb({ numero: payload.numero, nombre: payload.nombre, buffer: req.file.buffer });
+    const primaryFiles = pickUploadedFiles(req, "imagen_file");
+    const galleryFiles = pickUploadedFiles(req, "galeria_files");
+
+    if (primaryFiles[0]?.buffer) {
+      const saved = await saveImageAndThumb({ numero: payload.numero, nombre: payload.nombre, buffer: primaryFiles[0].buffer });
       payload.imagen_url = saved.imagen_url;
       payload.imagen_thumb_url = saved.imagen_thumb_url;
     } else if (payload.imagen_url && !payload.imagen_thumb_url) {
       payload.imagen_thumb_url = await ensureThumbForLocalImage(payload.numero, payload.nombre, payload.imagen_url);
     }
+
+    const uploadedGallery = await saveGalleryImages({ numero: payload.numero, nombre: payload.nombre, files: galleryFiles });
+    const primaryEntry = payload.imagen_url
+      ? [{ imagen_url: payload.imagen_url, imagen_thumb_url: payload.imagen_thumb_url || "" }]
+      : [];
+    const image_gallery = mergeGallery([...primaryEntry, ...uploadedGallery]);
+    if (image_gallery.length > 0) payload.extra = { image_gallery };
 
     await db.MajorArcana.create(payload);
 
@@ -1540,7 +1664,17 @@ async function show(req, res, next) {
       if (!imagen_thumb_url_resolved && String(imagen_url_resolved).startsWith("/public/img/")) {
         imagen_thumb_url_resolved = await ensureThumbForLocalImage(arcanoRaw.numero, arcanoRaw.nombre, imagen_url_resolved);
       }
-      arcano = { ...arcanoRaw, imagen_url_resolved, imagen_thumb_url_resolved };
+      const rawGallery = normalizeGallery(arcanoRaw.extra);
+      const image_gallery_resolved = mergeGallery(
+        [
+          { imagen_url: imagen_url_resolved, imagen_thumb_url: imagen_thumb_url_resolved || "" },
+          ...rawGallery
+        ].map((g) => ({
+          imagen_url: g.imagen_url,
+          imagen_thumb_url: g.imagen_thumb_url || resolveThumbUrl(arcanoRaw.numero, arcanoRaw.nombre, "", g.imagen_url)
+        }))
+      );
+      arcano = { ...arcanoRaw, imagen_url_resolved, imagen_thumb_url_resolved, image_gallery_resolved };
     }
     if (!arcano) return res.status(404).render("notFound", { title: "No encontrado" });
     res.render("majorArcana/show", { title: arcano.nombre, arcano });
@@ -1553,7 +1687,10 @@ async function showEditForm(req, res, next) {
   try {
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) return res.status(404).render("notFound", { title: "No encontrado" });
-    const arcano = await db.MajorArcana.findByPk(id, { raw: true });
+    const arcanoRaw = await db.MajorArcana.findByPk(id, { raw: true });
+    const arcano = arcanoRaw
+      ? { ...arcanoRaw, image_gallery: normalizeGallery(arcanoRaw.extra) }
+      : null;
     if (!arcano) return res.status(404).render("notFound", { title: "No encontrado" });
 
     res.render("majorArcana/form", {
@@ -1591,8 +1728,13 @@ async function update(req, res, next) {
       });
     }
 
-    if (req.file?.buffer) {
-      const saved = await saveImageAndThumb({ numero: payload.numero, nombre: payload.nombre, buffer: req.file.buffer });
+    const primaryFiles = pickUploadedFiles(req, "imagen_file");
+    const galleryFiles = pickUploadedFiles(req, "galeria_files");
+    const keepExistingGallery = String(req.body?.clear_gallery || "").trim() !== "1";
+    const existingGallery = keepExistingGallery ? normalizeGallery(existing.extra) : [];
+
+    if (primaryFiles[0]?.buffer) {
+      const saved = await saveImageAndThumb({ numero: payload.numero, nombre: payload.nombre, buffer: primaryFiles[0].buffer });
       payload.imagen_url = saved.imagen_url;
       payload.imagen_thumb_url = saved.imagen_thumb_url;
     } else {
@@ -1604,6 +1746,13 @@ async function update(req, res, next) {
         delete payload.imagen_thumb_url;
       }
     }
+
+    const uploadedGallery = await saveGalleryImages({ numero: payload.numero, nombre: payload.nombre, files: galleryFiles });
+    const finalPrimaryUrl = String(payload.imagen_url || existing.imagen_url || "").trim();
+    const finalPrimaryThumb = String(payload.imagen_thumb_url || existing.imagen_thumb_url || "").trim();
+    const primaryEntry = finalPrimaryUrl ? [{ imagen_url: finalPrimaryUrl, imagen_thumb_url: finalPrimaryThumb }] : [];
+    const image_gallery = mergeGallery([...primaryEntry, ...existingGallery, ...uploadedGallery]);
+    payload.extra = { ...(existing.extra && typeof existing.extra === "object" ? existing.extra : {}), image_gallery };
 
     await existingInstance.update(payload);
 
@@ -1691,6 +1840,18 @@ async function exportJson(req, res, next) {
 async function exportJsonV2(req, res, next) {
   try {
     const rows = await db.MajorArcana.findAll({ order: [["numero", "ASC"]], raw: true });
+    const etag = `"${crypto.createHash("sha256").update(JSON.stringify(rows)).digest("hex")}"`;
+    res.setHeader("ETag", etag);
+    res.setHeader("Cache-Control", "public, max-age=60");
+    const maxUpdatedAt = rows.reduce((acc, r) => {
+      const v = r?.updatedAt ? new Date(r.updatedAt).getTime() : 0;
+      return v > acc ? v : acc;
+    }, 0);
+    if (maxUpdatedAt) res.setHeader("Last-Modified", new Date(maxUpdatedAt).toUTCString());
+    if (req.headers["if-none-match"] === etag) {
+      res.status(304).end();
+      return;
+    }
 
     const author = process.env.EXPORT_AUTHOR ? String(process.env.EXPORT_AUTHOR) : "Oracle Family Devs";
     const version = process.env.EXPORT_VERSION_V2 ? String(process.env.EXPORT_VERSION_V2) : "2.0.0";

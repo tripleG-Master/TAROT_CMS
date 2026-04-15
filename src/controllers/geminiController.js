@@ -2,6 +2,7 @@ const { generateWithGemini, normalizeModelName, listGeminiModels } = require("..
 const { buildTarotReadingPrompt } = require("../services/tarotGeminiPrompt");
 const db = require("../db");
 const crypto = require("node:crypto");
+const { assertCardsInDeck } = require("../services/decks");
 
 function sha256(text) {
   return crypto.createHash("sha256").update(String(text || ""), "utf8").digest("hex");
@@ -247,6 +248,7 @@ async function tarotReading(req, res) {
       if (resolved) user_id = resolved;
     }
     const tirada = req.body?.tirada ?? {};
+    const deck_id = req.body?.deck_id ?? req.body?.deckId;
     const tema = req.body?.tema ?? "general";
     const pregunta = req.body?.pregunta ?? req.body?.question ?? req.body?.consulta ?? "";
     const preprompt = req.body?.preprompt ?? "";
@@ -281,6 +283,14 @@ async function tarotReading(req, res) {
       if (!ent || ent.plan !== "premium" || ent.status !== "active") {
         return res.status(402).json({ ok: false, error: "premium_required" });
       }
+    }
+
+    const numeros = Array.isArray(tirada?.cards)
+      ? tirada.cards.map((c) => Number(c?.id ?? c?.numero ?? c?.arcano_id)).filter((n) => Number.isInteger(n))
+      : [];
+    if (deck_id) {
+      const check = await assertCardsInDeck({ deck_id, card_kind: "major", numeros });
+      if (!check.ok) return res.status(400).json({ ok: false, error: check.error });
     }
 
     const built = await buildTarotReadingPrompt({
@@ -334,6 +344,7 @@ async function tarotReading(req, res) {
       reading_mode: String(reading_mode || "").trim() || undefined,
       pregunta: String(pregunta || "").trim() || undefined,
       text: finalText,
+      deck_id: deck_id ? Number(deck_id) || deck_id : undefined,
       user_id: Number.isInteger(user_id) && user_id > 0 ? user_id : undefined,
       entitlement: entitlement ? { plan: entitlement.plan, status: entitlement.status, expires_at: entitlement.expires_at || null } : undefined,
       usage_counter: usageRow
