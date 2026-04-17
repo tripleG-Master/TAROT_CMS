@@ -10,6 +10,7 @@ const minorArcanaRoutes = require("./routes/minorArcanaRoutes");
 const zodiacRoutes = require("./routes/zodiacRoutes");
 const tarotRoutes = require("./routes/tarotRoutes");
 const apiRoutes = require("./routes/apiRoutes");
+const deckRoutes = require("./routes/deckRoutes");
 const { requireApiToken } = require("./middleware/apiAuth");
 const healthRoutes = require("./routes/healthRoutes");
 
@@ -48,7 +49,8 @@ function createApp() {
 
   app.use("/health", healthRoutes);
 
-  app.get("/", (req, res) => res.redirect("/arcanos"));
+  app.get("/", (req, res) => res.redirect("/decks"));
+  app.use("/decks", deckRoutes);
   app.use("/arcanos", majorArcanaRoutes);
   app.use("/menores", minorArcanaRoutes);
   app.use("/zodiac", zodiacRoutes);

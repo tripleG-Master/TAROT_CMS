@@ -1551,15 +1551,123 @@ async function list(req, res, next) {
       });
     }
 
+    const import_created = Number(req.query?.import_created);
+    const import_updated = Number(req.query?.import_updated);
+    const import_skipped = Number(req.query?.import_skipped);
+    const import_error = String(req.query?.import_error || "").trim();
+
     res.render("majorArcana/index", {
       title: "Cartas",
       arcanos,
       hasArcanos: arcanos.length > 0,
       decks,
-      selectedDeckId: selectedDeck ? selectedDeck.id : null
+      selectedDeckId: selectedDeck ? selectedDeck.id : null,
+      importResult:
+        Number.isFinite(import_created) || Number.isFinite(import_updated) || Number.isFinite(import_skipped) || import_error
+          ? {
+              created: Number.isFinite(import_created) ? import_created : null,
+              updated: Number.isFinite(import_updated) ? import_updated : null,
+              skipped: Number.isFinite(import_skipped) ? import_skipped : null,
+              error: import_error || null
+            }
+          : null
     });
   } catch (err) {
     next(err);
+  }
+}
+
+function normalizeDeckCsvKey(input) {
+  return String(input || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function normalizeDeckCsvRow(row) {
+  const out = {};
+  for (const [k, v] of Object.entries(row || {})) {
+    const nk = normalizeDeckCsvKey(k);
+    if (!nk) continue;
+    out[nk] = v;
+  }
+  return out;
+}
+
+function parseCsvBoolean(input, fallback = true) {
+  const raw = String(input ?? "").trim().toLowerCase();
+  if (!raw) return fallback;
+  if (["1", "true", "t", "si", "sí", "yes", "y", "x"].includes(raw)) return true;
+  if (["0", "false", "f", "no", "n"].includes(raw)) return false;
+  return fallback;
+}
+
+function normalizeCardKind(input) {
+  const raw = String(input || "").trim().toLowerCase();
+  if (["minor", "menor", "menores"].includes(raw)) return "minor";
+  return "major";
+}
+
+async function importDeckCardsCsvFile(req, res, next) {
+  try {
+    const deck_id = Number(req.body?.deck_id ?? req.body?.deckId ?? req.query?.deck_id ?? req.query?.deckId);
+    if (!Number.isInteger(deck_id) || deck_id <= 0) {
+      return res.redirect(`/arcanos?import_error=${encodeURIComponent("deck_id inválido")}`);
+    }
+
+    const deck = await db.models.Deck.findByPk(deck_id, { raw: true });
+    if (!deck) {
+      return res.redirect(`/arcanos?import_error=${encodeURIComponent("mazo no encontrado")}`);
+    }
+
+    const csv = decodeUploadedTextBuffer(req.file?.buffer);
+    const rows = csvToObjects(csv).map(normalizeDeckCsvRow);
+    if (rows.length === 0) {
+      return res.redirect(`/arcanos?deck_id=${deck_id}&import_error=${encodeURIComponent("CSV vacío")}`);
+    }
+
+    let created = 0;
+    let updated = 0;
+    let skipped = 0;
+
+    for (const r of rows) {
+      const card_kind = normalizeCardKind(r.card_kind ?? r.kind ?? r.tipo ?? r.arcana_type);
+      const card_numero = Number(r.card_numero ?? r.numero ?? r.id ?? r.card_id ?? r.arcano_id);
+      if (!Number.isInteger(card_numero)) {
+        skipped += 1;
+        continue;
+      }
+      const enabled = parseCsvBoolean(r.enabled ?? r.activo ?? r.habilitado, true);
+      const imagen_url = String(r.imagen_url ?? r.image_url ?? r.url ?? "").trim();
+      const imagen_thumb_url = String(r.imagen_thumb_url ?? r.image_thumb_url ?? r.thumb_url ?? "").trim();
+
+      const where = { deck_id, card_kind, card_numero };
+      const existing = await db.models.DeckCard.findOne({ where, paranoid: false });
+      if (existing) {
+        if (existing.deletedAt) await existing.restore();
+        existing.enabled = enabled;
+        existing.imagen_url = imagen_url;
+        existing.imagen_thumb_url = imagen_thumb_url;
+        await existing.save();
+        updated += 1;
+      } else {
+        await db.models.DeckCard.create({ deck_id, card_kind, card_numero, enabled, imagen_url, imagen_thumb_url, extra: {} });
+        created += 1;
+      }
+    }
+
+    return res.redirect(
+      `/arcanos?deck_id=${deck_id}&import_created=${encodeURIComponent(String(created))}&import_updated=${encodeURIComponent(
+        String(updated)
+      )}&import_skipped=${encodeURIComponent(String(skipped))}`
+    );
+  } catch (err) {
+    return res.redirect(
+      `/arcanos?import_error=${encodeURIComponent(err?.message || "error importando deck_cards CSV")}`
+    );
   }
 }
 
@@ -2209,6 +2317,7 @@ module.exports = {
   importArcanaMessagesCsvWideFile,
   deleteAllArcanaMessages,
   importLocal,
+  importDeckCardsCsvFile,
   list,
   showCreateForm,
   create,

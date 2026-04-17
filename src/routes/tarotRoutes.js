@@ -6,6 +6,7 @@ const router = express.Router();
 
 router.get("/calculo", controller.showCalculo);
 router.get("/lectura", controller.showLectura);
+router.get("/tipos", controller.showTarotTypes);
 router.get("/gemini", controller.showGemini);
 router.get("/gemini/generations", controller.showGeminiGenerations);
 router.get("/gemini/templates", controller.showGeminiTemplates);

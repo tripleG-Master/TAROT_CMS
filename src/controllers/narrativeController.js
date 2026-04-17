@@ -159,8 +159,47 @@ async function dailyTarot(req, res) {
   }
 }
 
+function yesNoFromHash(hashHex) {
+  const n = parseInt(hashHex.slice(0, 8) || "0", 16);
+  return Number.isFinite(n) && n % 2 === 0 ? "si" : "no";
+}
+
+async function yesNoTarot(req, res) {
+  try {
+    const external_id = String(req.body?.external_id ?? req.body?.externalId ?? req.query?.external_id ?? req.query?.externalId ?? "").trim();
+    let user_id = Number(req.body?.user_id ?? req.body?.userId ?? req.query?.user_id ?? req.query?.userId);
+    const timezone = String(req.body?.timezone ?? req.query?.timezone ?? "UTC").trim() || "UTC";
+    const locale = String(req.body?.locale ?? req.query?.locale ?? "es-CL").trim() || "es-CL";
+    const pregunta = String(req.body?.pregunta ?? req.body?.question ?? "").trim();
+
+    if ((!Number.isInteger(user_id) || user_id <= 0) && !external_id) {
+      return res.status(400).json({ ok: false, error: "Se requiere external_id o user_id." });
+    }
+
+    if (!Number.isInteger(user_id) || user_id <= 0) {
+      const existing = await db.models.User.findOne({ where: { external_id }, raw: true });
+      if (existing) user_id = existing.id;
+      else {
+        const created = await db.models.User.create({ external_id, provider: "android" });
+        user_id = created.id;
+      }
+    }
+
+    const dayKey = todayInTimezoneDateOnly(timezone);
+    const seed = `${external_id || user_id}|${dayKey}|${locale}|${pregunta}`;
+    const hashHex = crypto.createHash("sha256").update(seed).digest("hex");
+    const answer = yesNoFromHash(hashHex);
+
+    const message = answer === "si" ? "Sí." : "No.";
+    return res.json({ ok: true, date: dayKey, timezone, locale, user_id, pregunta: pregunta || null, answer, message });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err?.message || "Error generando sí/no." });
+  }
+}
+
 module.exports = { threeCards, seed };
 module.exports.dailyTarot = dailyTarot;
+module.exports.yesNoTarot = yesNoTarot;
 
 async function showConnectors(req, res, next) {
   try {

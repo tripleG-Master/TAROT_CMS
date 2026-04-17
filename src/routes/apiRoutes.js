@@ -23,6 +23,7 @@ router.get("/content/manifest", contentController.getManifest);
 router.post("/narrative/seed", narrativeController.seed);
 router.post("/narrative/three-cards", narrativeController.threeCards);
 router.post("/tarot/daily", narrativeController.dailyTarot);
+router.post("/tarot/yes-no", narrativeController.yesNoTarot);
 
 router.get("/gemini/models", geminiController.listModels);
 router.post("/gemini/generate", geminiController.generate);

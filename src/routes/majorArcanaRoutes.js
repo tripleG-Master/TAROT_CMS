@@ -16,7 +16,10 @@ const uploadImage = multer({
   }
 });
 
-router.get("/", controller.list);
+router.get("/", (req, res) => {
+  const qs = req.originalUrl.includes("?") ? req.originalUrl.slice(req.originalUrl.indexOf("?")) : "";
+  res.redirect(`/decks${qs}`);
+});
 router.get("/new", controller.showCreateForm);
 router.post("/", uploadImage.fields([{ name: "imagen_file", maxCount: 1 }, { name: "galeria_files", maxCount: 12 }]), controller.create);
 router.get("/import", controller.showImportForm);
@@ -38,6 +41,7 @@ router.get("/export/v2/arcanos.json", controller.exportJsonV2);
 router.get("/export/builder", controller.showExportBuilder);
 router.post("/export/builder", controller.previewExportBuilder);
 router.get("/export/custom/arcanos.json", controller.exportJsonCustom);
+router.post("/deck-cards/import/csv/file", uploadCsv.single("deck_cards_csv_file"), controller.importDeckCardsCsvFile);
 router.get("/:id", controller.show);
 router.get("/:id/edit", controller.showEditForm);
 router.put("/:id", uploadImage.fields([{ name: "imagen_file", maxCount: 1 }, { name: "galeria_files", maxCount: 12 }]), controller.update);
