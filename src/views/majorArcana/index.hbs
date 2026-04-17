@@ -26,30 +26,6 @@
       <div class="alert alert-warning mb-2">No hay mazos configurados.</div>
     {{/if}}
 
-    {{#if importResult}}
-      {{#if importResult.error}}
-        <div class="alert alert-danger mb-2">{{importResult.error}}</div>
-      {{else}}
-        <div class="alert alert-success mb-2">
-          Importación deck_cards OK · created={{importResult.created}} · updated={{importResult.updated}} · skipped={{importResult.skipped}}
-        </div>
-      {{/if}}
-    {{/if}}
-
-    {{#if decks.length}}
-      <form method="POST" action="/arcanos/deck-cards/import/csv/file" enctype="multipart/form-data" class="row g-3 align-items-end mb-3">
-        <input type="hidden" name="deck_id" value="{{selectedDeckId}}" />
-        <div class="col-md-8">
-          <label class="form-label">Importar cartas del mazo (CSV)</label>
-          <input class="form-control" type="file" name="deck_cards_csv_file" accept=".csv,text/csv" required />
-          <div class="muted mt-1">Headers sugeridos: card_numero, enabled, imagen_url, imagen_thumb_url (opcional: card_kind).</div>
-        </div>
-        <div class="col-md-4 d-grid">
-          <button class="btn btn-outline-info" type="submit">Subir CSV</button>
-        </div>
-      </form>
-    {{/if}}
-
     <div class="table-responsive">
       <table class="table table-hover align-middle mb-0">
         <thead>

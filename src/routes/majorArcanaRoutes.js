@@ -16,10 +16,7 @@ const uploadImage = multer({
   }
 });
 
-router.get("/", (req, res) => {
-  const qs = req.originalUrl.includes("?") ? req.originalUrl.slice(req.originalUrl.indexOf("?")) : "";
-  res.redirect(`/decks${qs}`);
-});
+router.get("/", controller.list);
 router.get("/new", controller.showCreateForm);
 router.post("/", uploadImage.fields([{ name: "imagen_file", maxCount: 1 }, { name: "galeria_files", maxCount: 12 }]), controller.create);
 router.get("/import", controller.showImportForm);

@@ -272,50 +272,9 @@ async function updateAppConfig(req, res) {
   }
 }
 
-async function showTarotTypes(req, res, next) {
-  try {
-    const decks = await db.models.Deck.findAll({
-      where: { is_active: true },
-      attributes: ["id", "slug", "nombre"],
-      order: [["id", "ASC"]],
-      raw: true
-    });
-    const deckCards = decks.length
-      ? await db.models.DeckCard.findAll({
-          where: { deck_id: decks.map((d) => d.id), card_kind: "major", enabled: true },
-          attributes: ["deck_id", "card_numero"],
-          order: [["deck_id", "ASC"], ["card_numero", "ASC"]],
-          raw: true
-        })
-      : [];
-    const byDeck = new Map();
-    for (const r of deckCards) {
-      const id = Number(r.deck_id);
-      if (!byDeck.has(id)) byDeck.set(id, []);
-      byDeck.get(id).push(Number(r.card_numero));
-    }
-    const deckOptions = decks.map((d) => ({
-      id: d.id,
-      slug: d.slug,
-      nombre: d.nombre,
-      card_numeros: byDeck.get(d.id) || []
-    }));
-    const defaultDeck = deckOptions.find((d) => d.slug === "default") || deckOptions[0] || null;
-
-    res.render("tarot/types", {
-      title: "Tarot · Tipos (Android)",
-      decks: deckOptions,
-      defaultDeckId: defaultDeck ? defaultDeck.id : null
-    });
-  } catch (err) {
-    next(err);
-  }
-}
-
 module.exports = {
   showCalculo,
   showLectura,
-  showTarotTypes,
   showGemini,
   showGeminiGenerations,
   showGeminiTemplates,
