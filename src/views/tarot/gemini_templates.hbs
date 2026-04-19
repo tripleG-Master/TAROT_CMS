@@ -1,0 +1,45 @@
+<main class="container py-4">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+      <h1 class="h3 brand mb-1">Gemini · Plantillas</h1>
+      <div class="muted">Plantillas guardadas (promocionadas/aprobadas) para prompts.</div>
+    </div>
+    <a class="btn btn-outline-light" href="/tarot/gemini">Volver</a>
+  </div>
+
+  <div class="card p-3">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead>
+          <tr>
+            <th style="width: 92px;">ID</th>
+            <th style="width: 190px;">Fecha</th>
+            <th style="width: 140px;">Tema</th>
+            <th style="width: 120px;">Approved</th>
+            <th style="width: 180px;">Tags</th>
+            <th>Contenido</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#unless templates.length}}
+            <tr>
+              <td colspan="6" class="py-4">
+                <div class="muted">Sin plantillas.</div>
+              </td>
+            </tr>
+          {{/unless}}
+          {{#each templates}}
+            <tr>
+              <td><span class="badge badge-mystic text-dark">{{id}}</span></td>
+              <td class="muted">{{createdAt}}</td>
+              <td>{{tema}}</td>
+              <td>{{approved}}</td>
+              <td class="text-truncate" style="max-width: 180px;">{{tags}}</td>
+              <td class="text-truncate" style="max-width: 720px;">{{contenido}}</td>
+            </tr>
+          {{/each}}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>

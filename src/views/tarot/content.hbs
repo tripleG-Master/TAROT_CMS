@@ -1,0 +1,41 @@
+<main class="container py-4">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+      <h1 class="h3 brand mb-1">Contenido App</h1>
+      <div class="muted">Editar AppConfig (DB) que consume Android. Guarda payload como JSON.</div>
+    </div>
+    <a class="btn btn-outline-light" href="/decks">Volver</a>
+  </div>
+
+  {{#if saved}}
+    <div class="alert alert-success mb-3">Guardado.</div>
+  {{/if}}
+  {{#if error}}
+    <div class="alert alert-danger mb-3">{{error}}</div>
+  {{/if}}
+
+  <div class="card p-4">
+    <div class="row g-3 mb-2">
+      <div class="col-md-3">
+        <div class="muted">Schema</div>
+        <div class="fw-semibold">{{app_config.schema_version}}</div>
+      </div>
+      <div class="col-md-6">
+        <div class="muted">ETag</div>
+        <div class="text-truncate fw-semibold">{{app_config.etag}}</div>
+      </div>
+      <div class="col-md-3">
+        <div class="muted">Updated</div>
+        <div class="fw-semibold">{{app_config.updatedAt}}</div>
+      </div>
+    </div>
+
+    <form method="POST" action="/tarot/content/app-config">
+      <label class="form-label">payload (JSON)</label>
+      <textarea name="payload" rows="18" class="form-control" spellcheck="false">{{payloadText}}</textarea>
+      <div class="d-flex align-items-center justify-content-end gap-2 mt-3">
+        <button class="btn btn-mystic text-dark fw-semibold" type="submit">Guardar</button>
+      </div>
+    </form>
+  </div>
+</main>

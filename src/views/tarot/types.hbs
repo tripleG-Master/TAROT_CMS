@@ -1,0 +1,225 @@
+<main class="container py-4">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+      <h1 class="h3 brand mb-1">Tipos (Android)</h1>
+      <div class="muted">Playground para probar endpoints daily, sí/no, narrativa y Gemini desde el CMS.</div>
+    </div>
+    <a class="btn btn-outline-light" href="/decks">Volver</a>
+  </div>
+
+  <div class="card p-4 mb-3">
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label">API Token</label>
+        <input id="apiToken" class="form-control" type="password" placeholder="Bearer..." />
+        <div class="muted mt-1">Necesario para llamar endpoints /api desde el navegador.</div>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">external_id</label>
+        <input id="externalId" class="form-control" placeholder="ANDROID_ID / UUID" />
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">user_id (opcional)</label>
+        <input id="userId" class="form-control" placeholder="123" />
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Timezone</label>
+        <input id="timezone" class="form-control" value="UTC" />
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Locale</label>
+        <input id="locale" class="form-control" value="es-CL" />
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Deck</label>
+        <select id="deckId" class="form-select">
+          <option value="">(default)</option>
+          {{#each decks}}
+            <option value="{{id}}" {{#if (eq id ../defaultDeckId)}}selected{{/if}}>{{nombre}} ({{slug}})</option>
+          {{/each}}
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-6">
+      <div class="card p-4 h-100">
+        <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+          <div>
+            <div class="fw-semibold">Tarot Diario</div>
+            <div class="muted">POST /api/tarot/daily</div>
+          </div>
+          <button id="dailyBtn" class="btn btn-mystic text-dark fw-semibold" type="button">Probar</button>
+        </div>
+        <textarea id="dailyOut" class="form-control" rows="10" spellcheck="false" readonly></textarea>
+      </div>
+    </div>
+
+    <div class="col-lg-6">
+      <div class="card p-4 h-100">
+        <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+          <div>
+            <div class="fw-semibold">Sí / No</div>
+            <div class="muted">POST /api/tarot/yes-no</div>
+          </div>
+          <button id="yesNoBtn" class="btn btn-mystic text-dark fw-semibold" type="button">Probar</button>
+        </div>
+        <label class="form-label">Pregunta</label>
+        <input id="yesNoQuestion" class="form-control mb-2" placeholder="¿Debería...?" />
+        <textarea id="yesNoOut" class="form-control" rows="8" spellcheck="false" readonly></textarea>
+      </div>
+    </div>
+
+    <div class="col-12">
+      <div class="card p-4">
+        <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+          <div>
+            <div class="fw-semibold">Narrativa · 3 cartas</div>
+            <div class="muted">POST /api/narrative/three-cards</div>
+          </div>
+          <button id="threeBtn" class="btn btn-outline-info fw-semibold" type="button">Probar</button>
+        </div>
+        <div class="row g-3">
+          <div class="col-md-3">
+            <label class="form-label">Tema</label>
+            <input id="threeTema" class="form-control" value="general" />
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Tono</label>
+            <input id="threeTono" class="form-control" value="general" />
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Carta 1</label>
+            <input id="c1" class="form-control" value="0" />
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Carta 2</label>
+            <input id="c2" class="form-control" value="1" />
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Carta 3</label>
+            <input id="c3" class="form-control" value="2" />
+          </div>
+          <div class="col-12">
+            <textarea id="threeOut" class="form-control" rows="12" spellcheck="false" readonly></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+  (function () {
+    const storedToken = localStorage.getItem("tarotCmsApiToken") || "";
+    const apiToken = document.getElementById("apiToken");
+    const externalId = document.getElementById("externalId");
+    const userId = document.getElementById("userId");
+    const timezone = document.getElementById("timezone");
+    const locale = document.getElementById("locale");
+    const deckId = document.getElementById("deckId");
+
+    const dailyBtn = document.getElementById("dailyBtn");
+    const dailyOut = document.getElementById("dailyOut");
+
+    const yesNoBtn = document.getElementById("yesNoBtn");
+    const yesNoQuestion = document.getElementById("yesNoQuestion");
+    const yesNoOut = document.getElementById("yesNoOut");
+
+    const threeBtn = document.getElementById("threeBtn");
+    const threeTema = document.getElementById("threeTema");
+    const threeTono = document.getElementById("threeTono");
+    const c1 = document.getElementById("c1");
+    const c2 = document.getElementById("c2");
+    const c3 = document.getElementById("c3");
+    const threeOut = document.getElementById("threeOut");
+
+    if (storedToken) apiToken.value = storedToken;
+
+    function buildHeaders() {
+      const token = apiToken.value || "";
+      localStorage.setItem("tarotCmsApiToken", token);
+      const h = { "Accept": "application/json", "Content-Type": "application/json" };
+      if (token) h["Authorization"] = "Bearer " + token;
+      return h;
+    }
+
+    function parseOptionalNumber(input) {
+      const raw = String(input || "").trim();
+      if (!raw) return undefined;
+      const n = Number(raw);
+      return Number.isFinite(n) ? n : undefined;
+    }
+
+    function baseBody() {
+      const body = {
+        external_id: String(externalId.value || "").trim(),
+        user_id: parseOptionalNumber(userId.value),
+        timezone: String(timezone.value || "").trim() || "UTC",
+        locale: String(locale.value || "").trim() || "es-CL"
+      };
+      const d = parseOptionalNumber(deckId.value);
+      if (d) body.deck_id = d;
+      return body;
+    }
+
+    async function postJson(path, body) {
+      const res = await fetch(path, { method: "POST", headers: buildHeaders(), body: JSON.stringify(body) });
+      const data = await res.json().catch(() => null);
+      return { res, data };
+    }
+
+    function render(out, payload) {
+      out.value = payload ? JSON.stringify(payload, null, 2) : "";
+    }
+
+    dailyBtn.addEventListener("click", async function () {
+      dailyOut.value = "Cargando...";
+      try {
+        const { res, data } = await postJson("/api/tarot/daily", baseBody());
+        render(dailyOut, data || { ok: false, error: "HTTP " + res.status });
+      } catch (err) {
+        render(dailyOut, { ok: false, error: err && err.message ? err.message : "Error de red" });
+      }
+    });
+
+    yesNoBtn.addEventListener("click", async function () {
+      yesNoOut.value = "Cargando...";
+      try {
+        const body = baseBody();
+        body.pregunta = String(yesNoQuestion.value || "").trim();
+        const { res, data } = await postJson("/api/tarot/yes-no", body);
+        render(yesNoOut, data || { ok: false, error: "HTTP " + res.status });
+      } catch (err) {
+        render(yesNoOut, { ok: false, error: err && err.message ? err.message : "Error de red" });
+      }
+    });
+
+    threeBtn.addEventListener("click", async function () {
+      threeOut.value = "Cargando...";
+      try {
+        const b = baseBody();
+        const tirada = {
+          cards: [
+            { id: parseOptionalNumber(c1.value), posicion: "pasado", orientacion: "upright" },
+            { id: parseOptionalNumber(c2.value), posicion: "presente", orientacion: "upright" },
+            { id: parseOptionalNumber(c3.value), posicion: "futuro", orientacion: "upright" }
+          ].filter((c) => typeof c.id === "number")
+        };
+        const body = {
+          deck_id: b.deck_id,
+          tema: String(threeTema.value || "").trim() || "general",
+          perfil_tono: String(threeTono.value || "").trim() || "",
+          user_data: { nombre: "", genero: "neutro" },
+          tirada
+        };
+
+        const { res, data } = await postJson("/api/narrative/three-cards", body);
+        render(threeOut, data || { ok: false, error: "HTTP " + res.status });
+      } catch (err) {
+        render(threeOut, { ok: false, error: err && err.message ? err.message : "Error de red" });
+      }
+    });
+  })();
+</script>

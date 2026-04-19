@@ -1,0 +1,47 @@
+<main class="container py-4">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+      <h1 class="h3 brand mb-1">Gemini · Generaciones</h1>
+      <div class="muted">Últimas generaciones registradas.</div>
+    </div>
+    <a class="btn btn-outline-light" href="/tarot/gemini">Volver</a>
+  </div>
+
+  <div class="card p-3">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead>
+          <tr>
+            <th style="width: 92px;">ID</th>
+            <th style="width: 190px;">Fecha</th>
+            <th style="width: 160px;">Modelo</th>
+            <th style="width: 140px;">Tema</th>
+            <th style="width: 120px;">Status</th>
+            <th>Pregunta</th>
+            <th style="width: 220px;">Fingerprint</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#unless generations.length}}
+            <tr>
+              <td colspan="7" class="py-4">
+                <div class="muted">Sin generaciones.</div>
+              </td>
+            </tr>
+          {{/unless}}
+          {{#each generations}}
+            <tr>
+              <td><span class="badge badge-mystic text-dark">{{id}}</span></td>
+              <td class="muted">{{createdAt}}</td>
+              <td class="text-truncate" style="max-width: 160px;">{{model}}</td>
+              <td>{{tema}}</td>
+              <td>{{status}}</td>
+              <td class="text-truncate" style="max-width: 520px;">{{pregunta}}</td>
+              <td class="text-truncate" style="max-width: 220px;">{{fingerprint}}</td>
+            </tr>
+          {{/each}}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>

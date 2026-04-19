@@ -114,6 +114,26 @@ async function showLectura(req, res, next) {
   }
 }
 
+async function showTarotTypes(req, res, next) {
+  try {
+    const decks = await db.models.Deck.findAll({
+      where: { is_active: true },
+      attributes: ["id", "slug", "nombre"],
+      order: [["id", "ASC"]],
+      raw: true
+    });
+    const defaultDeck = decks.find((d) => d.slug === "default") || decks[0] || null;
+
+    res.render("tarot/types", {
+      title: "Tipos (Android)",
+      decks,
+      defaultDeckId: defaultDeck ? defaultDeck.id : null
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 function showGemini(req, res) {
   res.render("tarot/gemini", {
     title: "Gemini (Prueba)"
@@ -275,6 +295,7 @@ async function updateAppConfig(req, res) {
 module.exports = {
   showCalculo,
   showLectura,
+  showTarotTypes,
   showGemini,
   showGeminiGenerations,
   showGeminiTemplates,
