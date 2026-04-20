@@ -29,7 +29,7 @@ function resolveMinorImageUrl(numero, imagenUrl) {
   if (current) return current;
   if (!Number.isInteger(numero)) return "";
   const n = String(numero);
-  const candidates = [`${n}.jpg`, `${n}.jpeg`, `${n}.png`, `${n}.webp`];
+  const candidates = [`${n}.webp`, `${n}.jpg`, `${n}.jpeg`, `${n}.png`];
   const existing = candidates.find((f) => fs.existsSync(path.join(minorImgDir, f)));
   const fileName = existing || candidates[0];
   return `/public/img/minor/${fileName}`;
@@ -132,6 +132,7 @@ function mapImportRow(raw) {
   const palabras_clave = normalizeKeywords(raw.palabras_clave ?? raw.palabrasClave ?? raw.keywords);
   const imagen_url = cleanText(raw.imagen_url ?? raw.image_url ?? "");
   const imagen_thumb_url = cleanText(raw.imagen_thumb_url ?? raw.image_thumb_url ?? "");
+  const extra = parseOptionalJsonObject(raw.extra);
 
   return {
     numero,
@@ -143,7 +144,8 @@ function mapImportRow(raw) {
     descripcion_visual,
     palabras_clave,
     imagen_url,
-    imagen_thumb_url
+    imagen_thumb_url,
+    extra
   };
 }
 
@@ -220,6 +222,36 @@ function parseSeparatedValues(text, delimiter) {
     .filter((r) => r.some((v) => v.length > 0));
 }
 
+function normalizeHeaderKey(input) {
+  return String(input || "")
+    .trim()
+    .replace(/^\uFEFF/, "")
+    .toLowerCase()
+    .replace(/\s+/g, "_");
+}
+
+function decodeUploadedTextBuffer(buffer) {
+  if (!buffer || !Buffer.isBuffer(buffer)) return "";
+  const utf8 = buffer.toString("utf8").replace(/^\uFEFF/, "");
+  if (utf8.includes("�")) {
+    return buffer.toString("latin1").replace(/^\uFEFF/, "");
+  }
+  return utf8;
+}
+
+function parseOptionalJsonObject(input) {
+  const raw = String(input ?? "").trim();
+  if (!raw) return {};
+  if (!(raw.startsWith("{") || raw.startsWith("["))) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed;
+    return {};
+  } catch {
+    return {};
+  }
+}
+
 function csvToObjects(csvText) {
   const normalized = String(csvText || "").trim();
   if (!normalized) return [];
@@ -229,13 +261,16 @@ function csvToObjects(csvText) {
   if (table.length < 2) return [];
 
   const headers = table[0].map((h) => h.trim()).filter(Boolean);
+  const normalizedHeaders = headers.map(normalizeHeaderKey);
   const objects = [];
 
   for (const r of table.slice(1)) {
     if (r.every((v) => !String(v || "").trim())) continue;
     const obj = {};
     for (let i = 0; i < headers.length; i += 1) {
-      obj[headers[i]] = r[i] ?? "";
+      const value = r[i] ?? "";
+      obj[headers[i]] = value;
+      obj[normalizedHeaders[i]] = value;
     }
     objects.push(obj);
   }
@@ -485,13 +520,24 @@ async function remove(req, res, next) {
 }
 
 function showImportForm(req, res) {
+  const deleted = Number(req.query?.deleted);
   res.render("minorArcana/import", {
     title: "Importar Arcanos Menores",
     json: "",
     csv: "",
     error: "",
-    result: null
+    result: null,
+    deleted: Number.isFinite(deleted) ? deleted : null
   });
+}
+
+async function deleteAll(req, res, next) {
+  try {
+    const deleted = await db.MinorArcana.destroy({ where: {}, truncate: true, force: true });
+    return res.redirect(`/menores/import?deleted=${encodeURIComponent(String(deleted || 0))}`);
+  } catch (err) {
+    next(err);
+  }
 }
 
 async function importJson(req, res) {
@@ -565,7 +611,7 @@ async function importCsv(req, res) {
 
 async function importCsvFile(req, res) {
   try {
-    const csv = req.file?.buffer ? req.file.buffer.toString("utf8") : "";
+    const csv = decodeUploadedTextBuffer(req.file?.buffer);
     const rows = csvToObjects(csv);
     const { created, updated, skipped } = await performImport(rows);
     if (created + updated === 0) {
@@ -644,6 +690,7 @@ module.exports = {
   update,
   remove,
   showImportForm,
+  deleteAll,
   importJson,
   importCsv,
   importCsvFile,

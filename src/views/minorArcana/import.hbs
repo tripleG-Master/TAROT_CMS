@@ -5,10 +5,17 @@
       <div class="muted">Importa por JSON, CSV/TSV o archivo.</div>
     </div>
     <div class="d-flex gap-2">
+      <form method="POST" action="/menores/delete-all" class="m-0" onsubmit="return confirm('¿Eliminar TODOS los arcanos menores? Esta acción es irreversible.');">
+        <button class="btn btn-outline-danger" type="submit">Borrar todos</button>
+      </form>
       <a class="btn btn-outline-info" href="/menores/export/v2/arcanos-menores.json">Descargar Menores V2</a>
       <a class="btn btn-outline-light" href="/menores">Volver</a>
     </div>
   </div>
+
+  {{#if deleted}}
+    <div class="alert alert-success mb-3">Eliminados: {{deleted}}.</div>
+  {{/if}}
 
   {{#if error}}
     <div class="alert alert-danger mb-3">{{error}}</div>

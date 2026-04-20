@@ -22,6 +22,7 @@ router.get("/", controller.list);
 router.get("/new", controller.showCreateForm);
 router.post("/", uploadImage.single("imagen_file"), controller.create);
 router.get("/import", controller.showImportForm);
+router.post("/delete-all", controller.deleteAll);
 router.post("/import", controller.importJson);
 router.post("/import/csv", controller.importCsv);
 router.post("/import/csv/file", uploadCsv.single("csv_file"), controller.importCsvFile);

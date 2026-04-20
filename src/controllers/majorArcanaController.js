@@ -52,7 +52,7 @@ function resolveImageUrl(numero, nombre, imagenUrl) {
 
   if (Number.isInteger(numero)) {
     const n = String(numero);
-    const candidates = [`${n}.jpg`, `${n}.jpeg`, `${n}.png`, `${n}.webp`];
+    const candidates = [`${n}.webp`, `${n}.jpg`, `${n}.jpeg`, `${n}.png`];
     const existing = candidates.find((f) => fs.existsSync(path.join(imgDir, f)));
     const fileName = existing || candidates[0];
     return `/public/img/${fileName}`;
@@ -62,10 +62,10 @@ function resolveImageUrl(numero, nombre, imagenUrl) {
   base = imageAliases[base] || base;
 
   const candidates = [
+    `${base}.webp`,
     `${base}.jpg`,
     `${base}.jpeg`,
-    `${base}.png`,
-    `${base}.webp`
+    `${base}.png`
   ];
 
   const existing = candidates.find((f) => fs.existsSync(path.join(imgDir, f)));
