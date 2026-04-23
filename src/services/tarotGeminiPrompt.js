@@ -93,10 +93,19 @@ function normalizePerfilTono(input) {
 function validateCards(cards) {
   const arr = Array.isArray(cards) ? cards : [];
   if (arr.length !== 3) return null;
+  const mapPos = (pos) => {
+    const p = String(pos || "").trim().toLowerCase();
+    if (p === "pasado" || p === "presente" || p === "futuro") return p;
+    if (p === "carta_1" || p === "carta1" || p === "c1") return "pasado";
+    if (p === "carta_2" || p === "carta2" || p === "c2") return "presente";
+    if (p === "carta_3" || p === "carta3" || p === "c3") return "futuro";
+    return "";
+  };
+
   const normalized = arr.map((c) => ({
     card_kind: String(c?.card_kind ?? c?.cardKind ?? c?.kind ?? "major").trim().toLowerCase(),
     numero: Number(c?.id ?? c?.numero ?? c?.arcano_id ?? c?.card_numero ?? c?.cardNumero),
-    posicion: String(c?.posicion || "").trim().toLowerCase(),
+    posicion: mapPos(c?.posicion),
     orientacion: String(c?.orientacion ?? c?.orientation ?? "").trim()
   }));
   const okPos = new Set(["pasado", "presente", "futuro"]);
@@ -244,7 +253,7 @@ async function pickArcanaMessage({ arcano_id, posicion, contexto, perfil_tono, s
 async function buildTarotReadingPrompt({ user_data, tirada, tema, preprompt, pregunta, card_source, perfil_tono, reading_mode }) {
   const cards = validateCards(tirada?.cards);
   if (!cards) {
-    const err = new Error("tirada inválida. Se requieren 3 cartas con posicion pasado/presente/futuro e id numérico.");
+    const err = new Error("tirada inválida. Se requieren 3 cartas con posicion pasado/presente/futuro (o carta_1/2/3) e id numérico.");
     err.status = 400;
     throw err;
   }

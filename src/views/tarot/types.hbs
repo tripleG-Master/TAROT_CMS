@@ -351,19 +351,23 @@
       try {
         const b = baseBody();
         const cards = [
-          { card_kind: String(gK1.value || "major"), id: parseOptionalNumber(g1.value), posicion: "pasado", orientacion: String(gO1.value || "upright") },
-          { card_kind: String(gK2.value || "major"), id: parseOptionalNumber(g2.value), posicion: "presente", orientacion: String(gO2.value || "upright") },
-          { card_kind: String(gK3.value || "major"), id: parseOptionalNumber(g3.value), posicion: "futuro", orientacion: String(gO3.value || "upright") }
+          { card_kind: String(gK1.value || "major"), id: parseOptionalNumber(g1.value), posicion: "carta_1", orientacion: String(gO1.value || "upright") },
+          { card_kind: String(gK2.value || "major"), id: parseOptionalNumber(g2.value), posicion: "carta_2", orientacion: String(gO2.value || "upright") },
+          { card_kind: String(gK3.value || "major"), id: parseOptionalNumber(g3.value), posicion: "carta_3", orientacion: String(gO3.value || "upright") }
         ].filter((c) => typeof c.id === "number");
 
         const body = {
           external_id: b.external_id,
           user_id: b.user_id,
+          timezone: b.timezone,
+          locale: b.locale,
           tema: String(gTema.value || "").trim() || "general",
           perfil_tono: String(gTono.value || "").trim() || "general",
           reading_mode: String(gMode.value || "").trim() || "free",
           pregunta: String(gQuestion.value || "").trim(),
           model: String(gModel.value || "").trim(),
+          cards: cards.map((c) => c.id),
+          cards_kind: cards.map((c) => c.card_kind),
           tirada: { cards }
         };
 

@@ -459,7 +459,22 @@ async function tarotReadingLite(req, res) {
       const resolved = await ensureUserIdFromExternalId(external_id);
       if (resolved) user_id = resolved;
     }
-    const tirada = req.body?.tirada ?? {};
+    const cardsArr = Array.isArray(req.body?.cards) ? req.body.cards : null;
+    const kindsArr = Array.isArray(req.body?.cards_kind) ? req.body.cards_kind : null;
+    let tirada = req.body?.tirada ?? {};
+    if (!Array.isArray(tirada?.cards) || tirada.cards.length === 0) {
+      if (cardsArr && cardsArr.length === 3) {
+        const pos = ["carta_1", "carta_2", "carta_3"];
+        tirada = {
+          cards: cardsArr.map((idRaw, i) => ({
+            card_kind: String(kindsArr && kindsArr[i] ? kindsArr[i] : "major").trim().toLowerCase() || "major",
+            id: Number(idRaw),
+            posicion: pos[i],
+            orientacion: "upright"
+          }))
+        };
+      }
+    }
     const tema = req.body?.tema ?? "general";
     const pregunta = req.body?.pregunta ?? req.body?.question ?? req.body?.consulta ?? "";
     const preprompt = req.body?.preprompt ?? "";
