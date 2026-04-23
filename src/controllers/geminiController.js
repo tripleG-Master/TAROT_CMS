@@ -18,43 +18,65 @@ function limitWords(text, maxWords) {
   return words.slice(0, max).join(" ");
 }
 
-function enforceFreeTarotOutput(text) {
-  const labels = ["Intro", "Pasado", "Presente", "Futuro", "Cierre"];
-  const keyFor = (s) => String(s || "").trim().toLowerCase();
-  const limits = { intro: 10, pasado: 15, presente: 15, futuro: 15, cierre: 10 };
+function extractJsonBlock(text) {
+  const s = String(text || "").trim();
+  if (!s) return "";
+  const m = s.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (m && m[1]) return String(m[1]).trim();
+  return s;
+}
 
-  const lines = String(text || "")
-    .replace(/\r/g, "")
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean);
-
-  const found = new Map();
-  let current = "";
-
-  for (const line of lines) {
-    const m = line.match(/^(Intro|Pasado|Presente|Futuro|Cierre)\s*:\s*(.*)$/i);
-    if (m) {
-      current = keyFor(m[1]);
-      if (!found.has(current)) found.set(current, "");
-      const prev = found.get(current) || "";
-      const next = (prev ? prev + " " : "") + String(m[2] || "").trim();
-      found.set(current, next.trim());
-      continue;
-    }
-    if (current) {
-      const prev = found.get(current) || "";
-      found.set(current, (prev ? prev + " " : "") + line);
-    }
+function normalizeTarotReadingJson(text) {
+  const raw = extractJsonBlock(text);
+  if (!raw) return null;
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
   }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+  const pick = (k) => String(parsed?.[k] ?? parsed?.[k.toLowerCase()] ?? "").trim();
+  const intro = pick("Intro");
+  const pasado = pick("Pasado");
+  const presente = pick("Presente");
+  const futuro = pick("Futuro");
+  const cierre = pick("Cierre");
+  if (!intro && !pasado && !presente && !futuro && !cierre) return null;
+  return {
+    Intro: intro,
+    Pasado: pasado,
+    Presente: presente,
+    Futuro: futuro,
+    Cierre: cierre
+  };
+}
 
-  return labels
-    .map((label) => {
-      const k = keyFor(label);
-      const content = limitWords(found.get(k) || "", limits[k] || 15);
-      return `${label}: ${content}`.trimEnd();
-    })
-    .join("\n");
+function enforceFreeTarotReading(reading) {
+  const r = reading && typeof reading === "object" ? reading : {};
+  return {
+    Intro: limitWords(r.Intro, 10),
+    Pasado: limitWords(r.Pasado, 15),
+    Presente: limitWords(r.Presente, 15),
+    Futuro: limitWords(r.Futuro, 15),
+    Cierre: limitWords(r.Cierre, 10)
+  };
+}
+
+function tarotReadingToText(reading) {
+  const r = reading && typeof reading === "object" ? reading : {};
+  const intro = String(r.Intro || "").trim();
+  const pasado = String(r.Pasado || "").trim();
+  const presente = String(r.Presente || "").trim();
+  const futuro = String(r.Futuro || "").trim();
+  const cierre = String(r.Cierre || "").trim();
+  return [
+    `Intro: ${intro}`.trimEnd(),
+    `Pasado: ${pasado}`.trimEnd(),
+    `Presente: ${presente}`.trimEnd(),
+    `Futuro: ${futuro}`.trimEnd(),
+    `Cierre: ${cierre}`.trimEnd()
+  ].join("\n");
 }
 
 function todayUtcDateOnly() {
@@ -63,6 +85,46 @@ function todayUtcDateOnly() {
   const m = String(now.getUTCMonth() + 1).padStart(2, "0");
   const d = String(now.getUTCDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
+}
+
+function parseEnvInt(envKey) {
+  const raw = process.env[envKey];
+  if (raw === undefined || raw === null || String(raw).trim() === "") return null;
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return null;
+  return Math.trunc(n);
+}
+
+function getGeminiDailyLimitsForPlan(plan) {
+  const normalized = String(plan || "free").trim().toLowerCase() === "premium" ? "premium" : "free";
+  const reqLimit =
+    parseEnvInt(normalized === "premium" ? "GEMINI_DAILY_REQUEST_LIMIT_PREMIUM" : "GEMINI_DAILY_REQUEST_LIMIT_FREE");
+  const tokenLimit =
+    parseEnvInt(normalized === "premium" ? "GEMINI_DAILY_TOKEN_LIMIT_PREMIUM" : "GEMINI_DAILY_TOKEN_LIMIT_FREE");
+  return {
+    plan: normalized,
+    requests: Number.isInteger(reqLimit) && reqLimit >= 0 ? reqLimit : null,
+    tokens_total: Number.isInteger(tokenLimit) && tokenLimit >= 0 ? tokenLimit : null
+  };
+}
+
+async function enforceGeminiUsageLimits({ user_id, plan }) {
+  if (!Number.isInteger(user_id) || user_id <= 0) return { ok: true };
+  const limits = getGeminiDailyLimitsForPlan(plan);
+  if (limits.requests === null && limits.tokens_total === null) return { ok: true };
+
+  const period = todayUtcDateOnly();
+  const usage = await db.models.UsageCounter.findOne({ where: { user_id, period }, raw: true }).catch(() => null);
+  const usedRequests = Number(usage?.requests) || 0;
+  const usedTokens = Number(usage?.tokens_total) || 0;
+
+  if (limits.requests !== null && usedRequests >= limits.requests) {
+    return { ok: false, status: 429, error: "daily_request_limit_reached", limits, usage: { period, requests: usedRequests, tokens_total: usedTokens } };
+  }
+  if (limits.tokens_total !== null && usedTokens >= limits.tokens_total) {
+    return { ok: false, status: 429, error: "daily_token_limit_reached", limits, usage: { period, requests: usedRequests, tokens_total: usedTokens } };
+  }
+  return { ok: true };
 }
 
 async function incrementUsage({ user_id, usage }) {
@@ -179,6 +241,7 @@ async function generate(req, res) {
       const fingerprint = sha256(JSON.stringify({ kind: "generic", model: m, prompt, system }).slice(0, 1000));
       try {
         await db.models.GeminiGeneration.create({
+          user_id: Number.isInteger(user_id) && user_id > 0 ? user_id : null,
           model: m,
           tema: "",
           pregunta: "",
@@ -276,11 +339,16 @@ async function tarotReading(req, res) {
     const includePrompt = req.body?.includePrompt === true;
     const store = req.body?.store !== false;
 
+    const entitlement = await getActiveEntitlement(user_id);
     if (mode === "premium") {
-      const ent = await getActiveEntitlement(user_id);
-      if (!ent || ent.plan !== "premium" || ent.status !== "active") {
+      if (!entitlement || entitlement.plan !== "premium" || entitlement.status !== "active") {
         return res.status(402).json({ ok: false, error: "premium_required" });
       }
+    }
+
+    const limitCheck = await enforceGeminiUsageLimits({ user_id, plan: entitlement?.plan || "free" });
+    if (!limitCheck.ok) {
+      return res.status(limitCheck.status).json({ ok: false, error: limitCheck.error });
     }
 
     const built = await buildTarotReadingPrompt({
@@ -304,15 +372,18 @@ async function tarotReading(req, res) {
       thinkingBudget
     });
 
-    const finalText = mode === "free" ? enforceFreeTarotOutput(result.text || "") : (result.text || "");
+    const parsedReading = normalizeTarotReadingJson(result.text || "");
+    const readingBase = parsedReading || { Intro: "", Pasado: "", Presente: "", Futuro: "", Cierre: "" };
+    const reading = mode === "free" ? enforceFreeTarotReading(readingBase) : readingBase;
+    const finalText = tarotReadingToText(reading);
     const usageRow = await incrementUsage({ user_id, usage: result?.usage });
-    const entitlement = await getActiveEntitlement(user_id);
 
     if (store) {
       const m = result.model || normalizeModelName(model) || normalizeModelName(process.env.GEMINI_MODEL) || "gemini-1.5-flash";
       const fingerprint = sha256(JSON.stringify({ kind: "tarot", model: m, tema: String(tema || ""), pregunta: String(pregunta || ""), cartas: built?.context?.cartas || [] }).slice(0, 2000));
       try {
         await db.models.GeminiGeneration.create({
+          user_id: Number.isInteger(user_id) && user_id > 0 ? user_id : null,
           model: m,
           tema: String(tema || ""),
           pregunta: String(pregunta || ""),
@@ -331,9 +402,11 @@ async function tarotReading(req, res) {
       ok: true,
       model: result.model || normalizeModelName(model) || normalizeModelName(process.env.GEMINI_MODEL) || "gemini-1.5-flash",
       tema: String(tema || "general"),
+      perfil_tono: String(perfil_tono || "").trim() || "general",
       reading_mode: String(reading_mode || "").trim() || undefined,
       pregunta: String(pregunta || "").trim() || undefined,
       text: finalText,
+      reading,
       user_id: Number.isInteger(user_id) && user_id > 0 ? user_id : undefined,
       entitlement: entitlement ? { plan: entitlement.plan, status: entitlement.status, expires_at: entitlement.expires_at || null } : undefined,
       usage_counter: usageRow
@@ -364,6 +437,122 @@ async function tarotReading(req, res) {
         }
       },
       raw: includeRaw ? result.raw : undefined
+    });
+  } catch (err) {
+    const status = Number.isInteger(err?.status) ? err.status : 500;
+    return res.status(status).json({ ok: false, error: err?.message || "Error generando lectura con Gemini." });
+  }
+}
+
+async function tarotReadingLite(req, res) {
+  try {
+    const user_data = req.body?.user_data ?? req.body?.user ?? {};
+    let user_id = Number(req.body?.user_id ?? req.body?.userId ?? user_data?.user_id ?? user_data?.userId);
+    if (!Number.isInteger(user_id) || user_id <= 0) {
+      const external_id =
+        req.body?.external_id ??
+        req.body?.externalId ??
+        user_data?.external_id ??
+        user_data?.externalId ??
+        req.body?.device_id ??
+        req.body?.installation_id;
+      const resolved = await ensureUserIdFromExternalId(external_id);
+      if (resolved) user_id = resolved;
+    }
+    const tirada = req.body?.tirada ?? {};
+    const tema = req.body?.tema ?? "general";
+    const pregunta = req.body?.pregunta ?? req.body?.question ?? req.body?.consulta ?? "";
+    const preprompt = req.body?.preprompt ?? "";
+    const reading_mode = req.body?.reading_mode ?? req.body?.mode ?? "";
+    const card_source = req.body?.card_source ?? req.body?.fuente_cartas ?? "";
+    const perfil_tono = req.body?.perfil_tono ?? req.body?.tono ?? "";
+    const model = req.body?.model ?? "";
+    const temperature = req.body?.temperature;
+    const maxOutputTokensRaw = req.body?.maxOutputTokens ?? req.body?.max_output_tokens;
+    const mode = String(reading_mode || "").trim().toLowerCase() === "premium" ? "premium" : "free";
+    const maxOutputTokens = Number.isFinite(Number(maxOutputTokensRaw))
+      ? Number(maxOutputTokensRaw)
+      : mode === "free"
+        ? 160
+        : 256;
+    const thinkingBudgetRaw = req.body?.thinkingBudget ?? req.body?.thinking_budget;
+    const thinkingBudget =
+      thinkingBudgetRaw === 0 || thinkingBudgetRaw === "0" || Number.isFinite(Number(thinkingBudgetRaw))
+        ? Number(thinkingBudgetRaw)
+        : mode === "free"
+          ? 0
+          : 64;
+    const topP = req.body?.topP ?? req.body?.top_p;
+    const topK = req.body?.topK ?? req.body?.top_k;
+    const store = req.body?.store !== false;
+
+    const entitlement = await getActiveEntitlement(user_id);
+    if (mode === "premium") {
+      if (!entitlement || entitlement.plan !== "premium" || entitlement.status !== "active") {
+        return res.status(402).json({ ok: false, error: "premium_required" });
+      }
+    }
+
+    const limitCheck = await enforceGeminiUsageLimits({ user_id, plan: entitlement?.plan || "free" });
+    if (!limitCheck.ok) {
+      return res.status(limitCheck.status).json({ ok: false, error: limitCheck.error });
+    }
+
+    const built = await buildTarotReadingPrompt({
+      user_data: { ...user_data, user_id: Number.isInteger(user_id) ? user_id : undefined },
+      tirada,
+      tema,
+      preprompt,
+      pregunta,
+      card_source,
+      perfil_tono,
+      reading_mode
+    });
+    const result = await generateWithGemini({
+      prompt: built.prompt,
+      system: built.system,
+      model,
+      temperature,
+      maxOutputTokens,
+      topP,
+      topK,
+      thinkingBudget
+    });
+
+    const parsedReading = normalizeTarotReadingJson(result.text || "");
+    const readingBase = parsedReading || { Intro: "", Pasado: "", Presente: "", Futuro: "", Cierre: "" };
+    const reading = mode === "free" ? enforceFreeTarotReading(readingBase) : readingBase;
+    const finalText = tarotReadingToText(reading);
+    await incrementUsage({ user_id, usage: result?.usage });
+
+    if (store) {
+      const m = result.model || normalizeModelName(model) || normalizeModelName(process.env.GEMINI_MODEL) || "gemini-1.5-flash";
+      const fingerprint = sha256(JSON.stringify({ kind: "tarot", model: m, tema: String(tema || ""), pregunta: String(pregunta || ""), cartas: built?.context?.cartas || [] }).slice(0, 2000));
+      try {
+        await db.models.GeminiGeneration.create({
+          user_id: Number.isInteger(user_id) && user_id > 0 ? user_id : null,
+          model: m,
+          tema: String(tema || ""),
+          pregunta: String(pregunta || ""),
+          user_profile: user_data || {},
+          request_payload: built?.context || {},
+          response_text: finalText,
+          response_raw: {},
+          status: "ok",
+          error: "",
+          fingerprint
+        });
+      } catch {}
+    }
+
+    return res.json({
+      ok: true,
+      tema: String(tema || "general"),
+      perfil_tono: String(perfil_tono || "").trim() || "general",
+      reading_mode: String(reading_mode || "").trim() || undefined,
+      pregunta: String(pregunta || "").trim() || undefined,
+      reading,
+      text: finalText
     });
   } catch (err) {
     const status = Number.isInteger(err?.status) ? err.status : 500;
@@ -420,4 +609,4 @@ async function approveTemplate(req, res) {
   }
 }
 
-module.exports = { generate, tarotReading, listModels, promoteGeneration, approveTemplate };
+module.exports = { generate, tarotReading, tarotReadingLite, listModels, promoteGeneration, approveTemplate };

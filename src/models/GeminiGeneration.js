@@ -8,6 +8,10 @@ module.exports = function defineGeminiGeneration(sequelize, DataTypes) {
         autoIncrement: true,
         primaryKey: true
       },
+      user_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+      },
       model: {
         type: DataTypes.TEXT,
         allowNull: false,
@@ -65,6 +69,7 @@ module.exports = function defineGeminiGeneration(sequelize, DataTypes) {
       timestamps: true,
       paranoid: true,
       indexes: [
+        { name: "idx_gemini_generations_user_id", fields: ["user_id"] },
         { name: "idx_gemini_generations_model", fields: ["model"] },
         { name: "idx_gemini_generations_tema", fields: ["tema"] },
         { name: "idx_gemini_generations_fingerprint", unique: false, fields: ["fingerprint"] }

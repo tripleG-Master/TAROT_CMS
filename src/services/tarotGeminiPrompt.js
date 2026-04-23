@@ -62,6 +62,14 @@ function meaningForTema(row, tema, orientacion) {
   return luz ? String(row.significado_luz || "") : String(row.significado_sombra || "");
 }
 
+function meaningForCardKind(row, tema, orientacion, card_kind) {
+  const kind = String(card_kind || "").trim().toLowerCase();
+  const o = normalizeOrientacion(orientacion);
+  const luz = o === "invertido" ? false : true;
+  if (kind === "minor") return luz ? String(row.significado_luz || "") : String(row.significado_sombra || "");
+  return meaningForTema(row, tema, orientacion);
+}
+
 function normalizeCardSource(input) {
   const raw = String(input || "").trim().toLowerCase();
   if (["mensajes", "messages", "arcana_messages", "arcanamessages", "arcana_message"].includes(raw)) return "messages";
@@ -74,16 +82,36 @@ function normalizeReadingMode(input) {
   return "free";
 }
 
+function normalizePerfilTono(input) {
+  const raw = String(input || "").trim().toLowerCase();
+  if (raw === "empatico") return "empatico";
+  if (raw === "directo") return "directo";
+  if (raw === "mistico") return "mistico";
+  return "general";
+}
+
 function validateCards(cards) {
   const arr = Array.isArray(cards) ? cards : [];
   if (arr.length !== 3) return null;
   const normalized = arr.map((c) => ({
-    numero: Number(c?.id ?? c?.numero ?? c?.arcano_id),
+    card_kind: String(c?.card_kind ?? c?.cardKind ?? c?.kind ?? "major").trim().toLowerCase(),
+    numero: Number(c?.id ?? c?.numero ?? c?.arcano_id ?? c?.card_numero ?? c?.cardNumero),
     posicion: String(c?.posicion || "").trim().toLowerCase(),
     orientacion: String(c?.orientacion ?? c?.orientation ?? "").trim()
   }));
   const okPos = new Set(["pasado", "presente", "futuro"]);
-  if (normalized.some((c) => !Number.isInteger(c.numero) || c.numero < 0 || c.numero > 21 || !okPos.has(c.posicion))) return null;
+  const kindOk = new Set(["major", "minor"]);
+  if (
+    normalized.some(
+      (c) =>
+        !kindOk.has(c.card_kind) ||
+        !Number.isInteger(c.numero) ||
+        c.numero < 0 ||
+        !okPos.has(c.posicion)
+    )
+  ) {
+    return null;
+  }
   const byPos = new Map(normalized.map((c) => [c.posicion, c]));
   if (!byPos.get("pasado") || !byPos.get("presente") || !byPos.get("futuro")) return null;
   return { pasado: byPos.get("pasado"), presente: byPos.get("presente"), futuro: byPos.get("futuro") };
@@ -216,42 +244,62 @@ async function pickArcanaMessage({ arcano_id, posicion, contexto, perfil_tono, s
 async function buildTarotReadingPrompt({ user_data, tirada, tema, preprompt, pregunta, card_source, perfil_tono, reading_mode }) {
   const cards = validateCards(tirada?.cards);
   if (!cards) {
-    const err = new Error("tirada inválida. Se requieren 3 cartas con posicion pasado/presente/futuro e id 0–21.");
+    const err = new Error("tirada inválida. Se requieren 3 cartas con posicion pasado/presente/futuro e id numérico.");
     err.status = 400;
     throw err;
   }
 
-  const numeros = [cards.pasado.numero, cards.presente.numero, cards.futuro.numero];
-  const rows = await db.MajorArcana.findAll({
-    where: { numero: numeros },
-    raw: true
-  });
-  const byNumero = new Map(rows.map((r) => [r.numero, r]));
-  if (!byNumero.has(cards.pasado.numero) || !byNumero.has(cards.presente.numero) || !byNumero.has(cards.futuro.numero)) {
-    const err = new Error("No se encontraron todas las cartas en MajorArcana.");
-    err.status = 400;
-    throw err;
+  const requested = [cards.pasado, cards.presente, cards.futuro];
+  const majorNumeros = requested.filter((c) => c.card_kind === "major").map((c) => c.numero);
+  const minorNumeros = requested.filter((c) => c.card_kind === "minor").map((c) => c.numero);
+
+  const majorRows = majorNumeros.length
+    ? await db.MajorArcana.findAll({ where: { numero: majorNumeros }, raw: true })
+    : [];
+  const minorRows = minorNumeros.length
+    ? await db.models.MinorArcana.findAll({ where: { numero: minorNumeros }, raw: true })
+    : [];
+
+  const byMajorNumero = new Map(majorRows.map((r) => [r.numero, r]));
+  const byMinorNumero = new Map(minorRows.map((r) => [r.numero, r]));
+
+  for (const c of requested) {
+    if (c.card_kind === "major" && !byMajorNumero.has(c.numero)) {
+      const err = new Error("No se encontraron todas las cartas en MajorArcana.");
+      err.status = 400;
+      throw err;
+    }
+    if (c.card_kind === "minor" && !byMinorNumero.has(c.numero)) {
+      const err = new Error("No se encontraron todas las cartas en MinorArcana.");
+      err.status = 400;
+      throw err;
+    }
   }
 
   const t = normalizeTema(tema);
+  const tono = normalizePerfilTono(perfil_tono);
   const u = await buildUserContext(user_data);
   const q = String(pregunta ?? user_data?.pregunta ?? user_data?.question ?? "").trim();
   const mode = normalizeReadingMode(reading_mode);
   const source = mode === "premium" ? "messages" : normalizeCardSource(card_source);
 
   const cardPayload = async (c) => {
-    const r = byNumero.get(c.numero);
-    const significado_tema = meaningForTema(r, t, c.orientacion);
+    const kind = c.card_kind === "minor" ? "minor" : "major";
+    const r = kind === "minor" ? byMinorNumero.get(c.numero) : byMajorNumero.get(c.numero);
+    const significado_tema = meaningForCardKind(r, t, c.orientacion, kind);
     const sentido = normalizeOrientacion(c.orientacion);
     const polaridad = messagePolarityFromSentido(sentido);
     const mensaje =
       source === "messages"
-        ? await pickArcanaMessage({ arcano_id: r.numero, posicion: c.posicion, contexto: t, perfil_tono, sentido, polaridad })
+        ? await pickArcanaMessage({ arcano_id: r.numero, posicion: c.posicion, contexto: t, perfil_tono: tono, sentido, polaridad })
         : null;
     const texto_para_lectura = source === "messages" && mensaje ? String(mensaje.contenido || "") : significado_tema;
     return {
+      card_kind: kind,
       numero: r.numero,
       nombre: r.nombre,
+      palo: kind === "minor" ? String(r.palo || "") : "",
+      valor: kind === "minor" ? String(r.valor || "") : "",
       posicion: c.posicion,
       orientacion: sentido,
       keywords: keywordsArray(r.palabras_clave),
@@ -281,6 +329,7 @@ async function buildTarotReadingPrompt({ user_data, tirada, tema, preprompt, pre
   const context_full = {
     user: u,
     tema: t,
+    perfil_tono: tono,
     pregunta: q || null,
     reading_mode: mode,
     cartas: {
@@ -297,8 +346,11 @@ async function buildTarotReadingPrompt({ user_data, tirada, tema, preprompt, pre
     birth_arcana: u?.birth_arcana ? { major_arcana_numero: u.birth_arcana.major_arcana_numero } : null
   };
   const compactCard = (c) => ({
+    card_kind: c.card_kind,
     numero: c.numero,
     nombre: c.nombre,
+    palo: c.card_kind === "minor" ? String(c.palo || "") : "",
+    valor: c.card_kind === "minor" ? String(c.valor || "") : "",
     posicion: c.posicion,
     orientacion: c.orientacion,
     texto_para_lectura: String(c.texto_para_lectura || ""),
@@ -316,6 +368,7 @@ async function buildTarotReadingPrompt({ user_data, tirada, tema, preprompt, pre
   const context = {
     user: compactUser,
     tema: t,
+    perfil_tono: tono,
     pregunta: q || null,
     reading_mode: mode,
     cartas: {
@@ -339,16 +392,15 @@ async function buildTarotReadingPrompt({ user_data, tirada, tema, preprompt, pre
 
   const styleRule =
     mode === "free"
-      ? "FREE: salida EXACTA en 5 líneas (sin texto extra). Cada sección en una sola línea. Cada sección 1 frase. Pasado/Presente/Futuro <=15 palabras. Intro/Cierre <=10 palabras."
-      : "PREMIUM: devuelve exactamente 5 secciones. Más amplia y personalizada usando user si existe, sin inventar.";
+      ? "FREE: devuelve SOLO JSON. Valores: Intro/Cierre <=10 palabras. Pasado/Presente/Futuro <=15 palabras. 1 frase por campo."
+      : "PREMIUM: devuelve SOLO JSON. Campos más completos, cálidos y coherentes, sin inventar.";
 
   const prompt =
-    "Genera una lectura de tarot (Pasado, Presente, Futuro) usando SOLO el CONTEXTO JSON.\n" +
-    "Formato exacto: Intro:, Pasado:, Presente:, Futuro:, Cierre:. Sin viñetas.\n" +
-    "No inventes nada fuera del JSON. Usa texto_para_lectura y keywords de forma natural.\n" +
-    "Si hay pregunta, orienta la lectura a esa pregunta.\n" +
+    "Usa SOLO el CONTEXTO JSON. No inventes.\n" +
+    "Salida: SOLO un JSON válido (sin markdown, sin texto extra) con claves exactas: Intro, Pasado, Presente, Futuro, Cierre.\n" +
+    "Usa cartas.*.texto_para_lectura y keywords si ayuda. Si hay pregunta, enfoca la lectura. Respeta perfil_tono.\n" +
     styleRule +
-    "\n\nCONTEXTO:\n```json\n" +
+    "\nCONTEXTO:\n```json\n" +
     JSON.stringify(context) +
     "\n```\n";
 

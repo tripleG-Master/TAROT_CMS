@@ -1,10 +1,20 @@
 const db = require("../db");
 const { normalizeAppConfigPayload, appConfigEtag, APP_CONFIG_SCHEMA_VERSION } = require("../services/appConfig");
+const { parseBirthdate, getZodiacByBirthdate } = require("../services/zodiac");
+const { lifePathNumber, birthArcanaFromBirthdate } = require("../services/numerology");
+const { Op } = require("sequelize");
 
 function showCalculo(req, res) {
   res.render("tarot/calculo", {
     title: "Cálculo de Tarot"
   });
+}
+
+function normalizeGenero(input) {
+  const raw = String(input || "").trim().toLowerCase();
+  if (["m", "masculino", "hombre", "male"].includes(raw)) return "hombre";
+  if (["f", "femenino", "mujer", "female"].includes(raw)) return "mujer";
+  return "neutro";
 }
 
 async function showLectura(req, res, next) {
@@ -142,12 +152,20 @@ function showGemini(req, res) {
 
 async function showGeminiGenerations(req, res, next) {
   try {
+    const user_id = Number(req.query?.user_id);
+    const where = {};
+    if (Number.isInteger(user_id) && user_id > 0) where.user_id = user_id;
     const generations = await db.models.GeminiGeneration.findAll({
+      where,
       order: [["createdAt", "DESC"]],
       limit: 100,
       raw: true
     });
-    res.render("tarot/gemini_generations", { title: "Gemini · Generaciones", generations });
+    res.render("tarot/gemini_generations", {
+      title: "Gemini · Generaciones",
+      generations,
+      filters: { user_id: Number.isInteger(user_id) && user_id > 0 ? String(user_id) : "" }
+    });
   } catch (err) {
     next(err);
   }
@@ -175,7 +193,19 @@ function todayUtcDateOnly() {
 
 async function showUsers(req, res, next) {
   try {
+    const filterUserId = Number(req.query?.user_id);
+    const q = String(req.query?.q || "").trim();
+    const saved = String(req.query?.saved || "").trim() === "1";
+    const deleted = Number(req.query?.deleted);
+    const error = String(req.query?.error || "").trim();
+    const where =
+      Number.isInteger(filterUserId) && filterUserId > 0
+        ? { id: filterUserId }
+        : q
+          ? { external_id: { [Op.iLike]: `%${q}%` } }
+          : {};
     const users = await db.models.User.findAll({
+      where,
       order: [["createdAt", "DESC"]],
       limit: 200,
       raw: true
@@ -230,7 +260,152 @@ async function showUsers(req, res, next) {
       };
     });
 
-    res.render("tarot/users", { title: "Usuarios", rows, period });
+    res.render("tarot/users", {
+      title: "Usuarios",
+      rows,
+      period,
+      saved,
+      deleted: Number.isFinite(deleted) ? deleted : null,
+      error,
+      filters: {
+        user_id: Number.isInteger(filterUserId) && filterUserId > 0 ? String(filterUserId) : "",
+        q
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function showUserEdit(req, res, next) {
+  try {
+    const id = Number(req.params?.id);
+    if (!Number.isInteger(id) || id <= 0) return res.status(404).render("notFound", { title: "No encontrado" });
+    const error = String(req.query?.error || "").trim();
+
+    const user = await db.models.User.findByPk(id, { raw: true });
+    if (!user) return res.status(404).render("notFound", { title: "No encontrado" });
+
+    const profile = await db.models.UserProfile.findOne({ where: { user_id: id }, raw: true });
+    const entitlement = await db.models.Entitlement.findOne({ where: { user_id: id }, order: [["createdAt", "DESC"]], raw: true });
+
+    res.render("tarot/user_edit", {
+      title: `Editar Usuario ${id}`,
+      formAction: `/tarot/users/${id}?_method=PUT`,
+      deleteAction: `/tarot/users/${id}?_method=DELETE`,
+      user,
+      profile: profile || null,
+      entitlement: entitlement || null,
+      error
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function updateUser(req, res, next) {
+  try {
+    const id = Number(req.params?.id);
+    if (!Number.isInteger(id) || id <= 0) return res.status(404).render("notFound", { title: "No encontrado" });
+
+    const user = await db.models.User.findByPk(id);
+    if (!user) return res.status(404).render("notFound", { title: "No encontrado" });
+
+    const external_id = String(req.body?.external_id ?? "").trim();
+    const provider = String(req.body?.provider ?? "").trim();
+
+    if (external_id && external_id !== String(user.external_id || "")) {
+      const existing = await db.models.User.findOne({ where: { external_id, id: { [Op.ne]: id } }, raw: true });
+      if (existing) return res.redirect(`/tarot/users/${id}/edit?error=${encodeURIComponent("external_id ya existe")}`);
+      user.external_id = external_id;
+    }
+    if (provider) user.provider = provider;
+    await user.save();
+
+    const nombre = String(req.body?.nombre ?? "").trim();
+    const genero = normalizeGenero(req.body?.genero);
+    const birthdateRaw = String(req.body?.birthdate ?? "").trim();
+    const birthdateParsed = birthdateRaw ? parseBirthdate(birthdateRaw) : null;
+    if (birthdateRaw && !birthdateParsed) {
+      return res.redirect(`/tarot/users/${id}/edit?error=${encodeURIComponent("birthdate inválida (YYYY-MM-DD o DD/MM/YYYY o DD-MM-YYYY)")}`);
+    }
+
+    const zodiac = birthdateParsed ? getZodiacByBirthdate(birthdateRaw) : null;
+    const lifePath = birthdateParsed ? lifePathNumber(birthdateParsed) : null;
+    const life_path = Number.isInteger(lifePath?.value) ? lifePath.value : null;
+    const birthArcana = birthdateParsed ? birthArcanaFromBirthdate(birthdateParsed) : null;
+    const birth_arcana = birthArcana && Number.isInteger(birthArcana.major_arcana_numero) ? birthArcana.major_arcana_numero : null;
+
+    const birthdateIso = birthdateParsed
+      ? zodiac
+        ? zodiac.birthdate
+        : `${String(birthdateParsed.year).padStart(4, "0")}-${String(birthdateParsed.month).padStart(2, "0")}-${String(birthdateParsed.day).padStart(2, "0")}`
+      : null;
+    const zodiacText = zodiac ? String(zodiac.sign?.name_es || "").trim() : "";
+
+    const profileRow = await db.models.UserProfile.findOne({ where: { user_id: id } });
+    if (profileRow) {
+      profileRow.nombre = nombre;
+      profileRow.genero = genero;
+      profileRow.birthdate = birthdateIso;
+      profileRow.zodiac = zodiacText;
+      profileRow.life_path = life_path;
+      profileRow.birth_arcana = birth_arcana;
+      await profileRow.save();
+    } else {
+      await db.models.UserProfile.create({
+        user_id: id,
+        nombre,
+        genero,
+        birthdate: birthdateIso,
+        zodiac: zodiacText,
+        life_path,
+        birth_arcana
+      });
+    }
+
+    const plan = String(req.body?.plan ?? "").trim().toLowerCase();
+    const status = String(req.body?.status ?? "").trim().toLowerCase();
+    const expires_at_raw = String(req.body?.expires_at ?? "").trim();
+    const expires_at = expires_at_raw ? new Date(expires_at_raw) : null;
+    const expires_at_value = expires_at && !Number.isNaN(expires_at.getTime()) ? expires_at.toISOString() : null;
+
+    if (plan || status || expires_at_raw) {
+      const current = await db.models.Entitlement.findOne({ where: { user_id: id }, order: [["createdAt", "DESC"]], raw: true });
+      const nextPlan = plan || String(current?.plan || "free");
+      const nextStatus = status || String(current?.status || "active");
+      const currentExpires = current?.expires_at ? new Date(current.expires_at).toISOString() : null;
+      const changed = nextPlan !== String(current?.plan || "") || nextStatus !== String(current?.status || "") || currentExpires !== expires_at_value;
+      if (changed) {
+        await db.models.Entitlement.create({
+          user_id: id,
+          plan: nextPlan || "free",
+          status: nextStatus || "active",
+          provider: "manual_cms",
+          product_id: "",
+          purchase_token: "",
+          expires_at: expires_at_value,
+          last_validated_at: new Date().toISOString()
+        });
+      }
+    }
+
+    return res.redirect(`/tarot/users?user_id=${encodeURIComponent(String(id))}&saved=1`);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function deleteUser(req, res, next) {
+  try {
+    const id = Number(req.params?.id);
+    if (!Number.isInteger(id) || id <= 0) return res.status(404).render("notFound", { title: "No encontrado" });
+    await db.models.UserProfile.destroy({ where: { user_id: id } });
+    await db.models.Entitlement.destroy({ where: { user_id: id } });
+    await db.models.UsageCounter.destroy({ where: { user_id: id } });
+    await db.models.GeminiGeneration.update({ user_id: null }, { where: { user_id: id } }).catch(() => null);
+    const deleted = await db.models.User.destroy({ where: { id } });
+    return res.redirect(`/tarot/users?deleted=${encodeURIComponent(String(deleted || 0))}`);
   } catch (err) {
     next(err);
   }
@@ -300,6 +475,9 @@ module.exports = {
   showGeminiGenerations,
   showGeminiTemplates,
   showUsers,
+  showUserEdit,
+  updateUser,
+  deleteUser,
   showContent,
   updateAppConfig
 };

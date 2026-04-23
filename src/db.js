@@ -190,6 +190,7 @@ async function initDb() {
 
     CREATE TABLE IF NOT EXISTS gemini_generations (
       id SERIAL PRIMARY KEY,
+      user_id INTEGER,
       model TEXT NOT NULL DEFAULT '',
       tema TEXT NOT NULL DEFAULT '',
       pregunta TEXT NOT NULL DEFAULT '',
@@ -204,9 +205,21 @@ async function initDb() {
       "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       "deletedAt" TIMESTAMPTZ
     );
+    ALTER TABLE IF EXISTS gemini_generations
+      ADD COLUMN IF NOT EXISTS user_id INTEGER;
     CREATE INDEX IF NOT EXISTS idx_gemini_generations_model ON gemini_generations (model);
     CREATE INDEX IF NOT EXISTS idx_gemini_generations_tema ON gemini_generations (tema);
     CREATE INDEX IF NOT EXISTS idx_gemini_generations_fingerprint ON gemini_generations (fingerprint);
+    CREATE INDEX IF NOT EXISTS idx_gemini_generations_user_id ON gemini_generations (user_id);
+    CREATE INDEX IF NOT EXISTS idx_gemini_generations_user_id_createdAt ON gemini_generations (user_id, "createdAt");
+
+    UPDATE gemini_generations
+      SET user_id = COALESCE(
+        CASE WHEN (request_payload->>'user_id') ~ '^[0-9]+$' THEN (request_payload->>'user_id')::integer END,
+        CASE WHEN (request_payload->'user_data'->>'user_id') ~ '^[0-9]+$' THEN (request_payload->'user_data'->>'user_id')::integer END,
+        CASE WHEN (user_profile->>'user_id') ~ '^[0-9]+$' THEN (user_profile->>'user_id')::integer END
+      )
+      WHERE user_id IS NULL;
 
     CREATE TABLE IF NOT EXISTS gemini_templates (
       id SERIAL PRIMARY KEY,

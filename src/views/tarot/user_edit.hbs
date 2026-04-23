@@ -1,0 +1,107 @@
+<main class="container py-4">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+      <h1 class="h3 brand mb-1">Editar Usuario</h1>
+      <div class="muted">ID: {{user.id}}</div>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <a class="btn btn-outline-light" href="/tarot/users?user_id={{user.id}}">Volver</a>
+      <form method="POST" action="{{deleteAction}}" class="m-0">
+        <button class="btn btn-outline-danger" type="submit" onclick="return confirm('¿Eliminar este usuario?');">Eliminar</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="card p-4">
+    {{#if error}}
+      <div class="alert alert-danger mb-3">{{error}}</div>
+    {{/if}}
+    <form method="POST" action="{{formAction}}">
+      <div class="row g-3">
+        <div class="col-md-8">
+          <label class="form-label">external_id</label>
+          <input name="external_id" class="form-control" value="{{user.external_id}}" />
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">provider</label>
+          <input name="provider" class="form-control" value="{{user.provider}}" />
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label">Nombre</label>
+          <input name="nombre" class="form-control" value="{{#if profile}}{{profile.nombre}}{{/if}}" />
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Género</label>
+          <select id="userGenero" name="genero" class="form-select">
+            <option value="mujer">Mujer</option>
+            <option value="hombre">Hombre</option>
+            <option value="neutro">Neutro</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Nacimiento</label>
+          <input name="birthdate" type="date" class="form-control" value="{{#if profile}}{{profile.birthdate}}{{/if}}" />
+        </div>
+
+        <div class="col-12">
+          <div class="muted">
+            Zodiaco: {{#if profile}}{{profile.zodiac}}{{else}}—{{/if}} · Life path: {{#if profile}}{{profile.life_path}}{{else}}—{{/if}} · Birth arcana: {{#if profile}}{{profile.birth_arcana}}{{else}}—{{/if}}
+          </div>
+        </div>
+
+        <div class="col-12"><div class="fw-semibold mt-2">Entitlement</div></div>
+
+        <div class="col-md-4">
+          <label class="form-label">plan</label>
+          <select id="entPlan" name="plan" class="form-select">
+            <option value="">(sin cambios)</option>
+            <option value="free">free</option>
+            <option value="premium">premium</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">status</label>
+          <select id="entStatus" name="status" class="form-select">
+            <option value="">(sin cambios)</option>
+            <option value="active">active</option>
+            <option value="expired">expired</option>
+            <option value="canceled">canceled</option>
+            <option value="grace">grace</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">expires_at (ISO)</label>
+          <input name="expires_at" class="form-control" value="{{#if entitlement}}{{entitlement.expires_at}}{{/if}}" placeholder="2026-12-31T23:59:59.000Z" />
+        </div>
+
+        <div class="col-12">
+          <div class="muted">
+            Actual: {{#if entitlement}}{{entitlement.plan}} · {{entitlement.status}} · {{entitlement.expires_at}}{{else}}—{{/if}}
+          </div>
+        </div>
+
+        <div class="col-12 d-flex align-items-center justify-content-end gap-2 mt-2">
+          <a class="btn btn-outline-light" href="/tarot/users?user_id={{user.id}}">Cancelar</a>
+          <button class="btn btn-mystic text-dark fw-semibold" type="submit">Guardar</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</main>
+
+<script>
+  (function () {
+    const genero = "{{#if profile}}{{profile.genero}}{{/if}}";
+    const plan = "{{#if entitlement}}{{entitlement.plan}}{{/if}}";
+    const status = "{{#if entitlement}}{{entitlement.status}}{{/if}}";
+
+    const generoSel = document.getElementById("userGenero");
+    const planSel = document.getElementById("entPlan");
+    const statusSel = document.getElementById("entStatus");
+
+    if (generoSel && genero) generoSel.value = genero;
+    if (planSel) planSel.value = plan || "free";
+    if (statusSel) statusSel.value = status || "active";
+  })();
+</script>
