@@ -10,6 +10,7 @@ router.get("/tipos", controller.showTarotTypes);
 router.get("/gemini", controller.showGemini);
 router.get("/gemini/generations", controller.showGeminiGenerations);
 router.get("/gemini/templates", controller.showGeminiTemplates);
+router.get("/historial", controller.showHistoricalTarot);
 router.get("/users", controller.showUsers);
 router.get("/users/:id/edit", controller.showUserEdit);
 router.put("/users/:id", controller.updateUser);

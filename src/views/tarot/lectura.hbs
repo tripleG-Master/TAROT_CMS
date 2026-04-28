@@ -371,9 +371,9 @@
 
     seedBtn.addEventListener("click", async function () {
       try {
-        const res = await fetch("/api/narrative/seed", { method: "POST", headers: headers() });
+        const res = await fetch("/api/android/narrative/seed", { method: "POST", headers: headers() });
         const data = await res.json().catch(() => null);
-        if (res.status === 401) return showError("Unauthorized. Pega el API token para usar /api.");
+        if (res.status === 401) return showError("Unauthorized. Pega el API token para usar /api/android.");
         if (!res.ok || !data || data.ok !== true) return showError((data && data.error) || ("HTTP " + res.status));
         showError("Seed OK: " + JSON.stringify(data.result));
       } catch (e) {
@@ -407,7 +407,7 @@
           }
         };
 
-        const url = engine === "gemini" ? "/api/gemini/tarot-reading" : "/api/narrative/three-cards";
+        const url = engine === "gemini" ? "/api/android/gemini/tarot-reading" : "/api/android/narrative/three-cards";
         if (engine === "gemini") {
           payload.includeContext = true;
           payload.includePrompt = includePrompt.checked === true;
@@ -423,7 +423,7 @@
         });
 
         const data = await res.json().catch(() => null);
-        if (res.status === 401) return showError("Unauthorized. Pega el API token para usar /api.");
+        if (res.status === 401) return showError("Unauthorized. Pega el API token para usar /api/android.");
         if (!res.ok || !data || data.ok !== true) return showError((data && data.error) || ("HTTP " + res.status));
         showOk(data, payload);
       } catch (err) {

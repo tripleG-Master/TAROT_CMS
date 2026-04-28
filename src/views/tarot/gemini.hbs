@@ -201,13 +201,13 @@
       };
 
       try {
-        const res = await fetch("/api/gemini/generate", {
+        const res = await fetch("/api/cms/gemini/generate", {
           method: "POST",
           headers: buildHeaders(),
           body: JSON.stringify(body)
         });
         const data = await res.json().catch(() => null);
-        if (res.status === 401) return showError("Unauthorized. Pega el API token para usar /api.");
+        if (res.status === 401) return showError("Unauthorized. Pega el API token para usar /api/cms.");
         if (!res.ok || !data || data.ok !== true) return showError((data && data.error) || ("HTTP " + res.status));
         showOk(data);
       } catch (err) {
@@ -217,9 +217,9 @@
 
     listModelsBtn.addEventListener("click", async function () {
       try {
-        const res = await fetch("/api/gemini/models", { method: "GET", headers: buildHeaders() });
+        const res = await fetch("/api/cms/gemini/models", { method: "GET", headers: buildHeaders() });
         const data = await res.json().catch(() => null);
-        if (res.status === 401) return showError("Unauthorized. Pega el API token para usar /api.");
+        if (res.status === 401) return showError("Unauthorized. Pega el API token para usar /api/cms.");
         if (!res.ok || !data || data.ok !== true) return showError((data && data.error) || ("HTTP " + res.status));
         showOk(data);
       } catch (err) {

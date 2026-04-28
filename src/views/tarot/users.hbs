@@ -228,7 +228,7 @@
 
           setAreas(payload, null);
 
-          const res = await fetch("/api/register", {
+          const res = await fetch("/api/android/register", {
             method: "POST",
             headers: headers(),
             body: JSON.stringify(payload)
@@ -236,7 +236,7 @@
           const data = await res.json().catch(() => null);
           setAreas(payload, data);
 
-          if (res.status === 401) return showError("Unauthorized. Pega el API token para usar /api.");
+          if (res.status === 401) return showError("Unauthorized. Pega el API token para usar /api/android.");
           if (!res.ok || !data || data.ok !== true) return showError((data && data.error) || ("HTTP " + res.status));
 
           showOk();

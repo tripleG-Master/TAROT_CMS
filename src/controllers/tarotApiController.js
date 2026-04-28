@@ -115,6 +115,32 @@ async function dailyTarot(req, res) {
         const result = await buildReading({ user, tirada, tema, perfil_tono });
         if (!result.ok) return res.status(400).json(result);
 
+        try {
+            await db.models.HistoricalTarot.create({
+                user_id: Number.isInteger(user_id) && user_id > 0 ? user_id : null,
+                kind: "daily",
+                tema: String(result.tema || tema || "general"),
+                pregunta: "",
+                tirada: {
+                    cards: [
+                        { card_kind: "major", id: picked[0], posicion: "pasado", orientacion: o1 },
+                        { card_kind: "major", id: picked[1], posicion: "presente", orientacion: o2 },
+                        { card_kind: "major", id: picked[2], posicion: "futuro", orientacion: o3 }
+                    ]
+                },
+                resultado: {
+                    reading: result.reading || {},
+                    message: result?.reading?.intro || result?.lectura || "",
+                    perfil_tono: result.perfil_tono || "",
+                    timezone,
+                    locale,
+                    date: dayKey,
+                    deck: deck ? { id: deck.id, slug: deck.slug, nombre: deck.nombre } : null
+                },
+                resultado_text: String(result?.reading?.intro || result?.lectura || "")
+            });
+        } catch {}
+
         return res.json({
             ok: true,
             date: dayKey,
@@ -211,6 +237,33 @@ async function yesNoTarot(req, res) {
         const o1 = crypto.randomInt(0, 2) === 0 ? "upright" : "reversed";
         const o2 = crypto.randomInt(0, 2) === 0 ? "upright" : "reversed";
         const o3 = crypto.randomInt(0, 2) === 0 ? "upright" : "reversed";
+
+        try {
+            await db.models.HistoricalTarot.create({
+                user_id: Number.isInteger(user_id) && user_id > 0 ? user_id : null,
+                kind: "yes_no",
+                tema: "general",
+                pregunta: String(pregunta || ""),
+                tirada: {
+                    cards: [
+                        { card_kind: picked[0].card_kind, id: picked[0].id, posicion: "carta_1", orientacion: o1 },
+                        { card_kind: picked[1].card_kind, id: picked[1].id, posicion: "carta_2", orientacion: o2 },
+                        { card_kind: picked[2].card_kind, id: picked[2].id, posicion: "carta_3", orientacion: o3 }
+                    ]
+                },
+                resultado: {
+                    answer,
+                    message,
+                    timezone,
+                    locale,
+                    date: dayKey,
+                    deck: deck ? { id: deck.id, slug: deck.slug, nombre: deck.nombre } : null,
+                    cards: picked.map((c) => c.id),
+                    cards_kind: picked.map((c) => c.card_kind)
+                },
+                resultado_text: String(message || "")
+            });
+        } catch {}
 
         return res.json({
             ok: true,

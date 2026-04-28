@@ -183,6 +183,58 @@ async function showGeminiTemplates(req, res, next) {
   }
 }
 
+async function showHistoricalTarot(req, res, next) {
+  try {
+    const user_id = Number(req.query?.user_id);
+    const kind = String(req.query?.kind || "").trim();
+    const tema = String(req.query?.tema || "").trim();
+    const q = String(req.query?.q || "").trim();
+
+    const where = {};
+    if (Number.isInteger(user_id) && user_id > 0) where.user_id = user_id;
+    if (kind) where.kind = kind;
+    if (tema) where.tema = tema;
+    if (q) {
+      where[Op.or] = [
+        { pregunta: { [Op.iLike]: `%${q}%` } },
+        { resultado_text: { [Op.iLike]: `%${q}%` } }
+      ];
+    }
+
+    const rows = await db.models.HistoricalTarot.findAll({
+      where,
+      order: [["createdAt", "DESC"]],
+      limit: 200,
+      raw: true
+    });
+
+    const userIds = Array.from(new Set(rows.map((r) => Number(r.user_id)).filter((n) => Number.isInteger(n) && n > 0)));
+    const users = userIds.length ? await db.models.User.findAll({ where: { id: userIds }, raw: true }) : [];
+    const byUserId = new Map(users.map((u) => [u.id, u]));
+
+    const out = rows.map((r) => {
+      const u = r.user_id ? byUserId.get(Number(r.user_id)) : null;
+      return {
+        ...r,
+        user_external_id: u ? u.external_id : ""
+      };
+    });
+
+    res.render("tarot/historical_tarot", {
+      title: "Historial Tarot",
+      rows: out,
+      filters: {
+        user_id: Number.isInteger(user_id) && user_id > 0 ? String(user_id) : "",
+        kind,
+        tema,
+        q
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 function todayUtcDateOnly() {
   const now = new Date();
   const y = now.getUTCFullYear();
@@ -474,6 +526,7 @@ module.exports = {
   showGemini,
   showGeminiGenerations,
   showGeminiTemplates,
+  showHistoricalTarot,
   showUsers,
   showUserEdit,
   updateUser,

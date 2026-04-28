@@ -11,6 +11,7 @@ const defineUsageCounter = require("./UsageCounter");
 const defineDeck = require("./Deck");
 const defineDeckCard = require("./DeckCard");
 const defineAppConfig = require("./AppConfig");
+const defineHistoricalTarot = require("./HistoricalTarot");
 
 function initModels(sequelize, DataTypes) {
   const MajorArcana = defineMajorArcana(sequelize, DataTypes);
@@ -26,6 +27,7 @@ function initModels(sequelize, DataTypes) {
   const Deck = defineDeck(sequelize, DataTypes);
   const DeckCard = defineDeckCard(sequelize, DataTypes);
   const AppConfig = defineAppConfig(sequelize, DataTypes);
+  const HistoricalTarot = defineHistoricalTarot(sequelize, DataTypes);
 
   User.hasOne(UserProfile, { foreignKey: "user_id" });
   UserProfile.belongsTo(User, { foreignKey: "user_id" });
@@ -35,6 +37,9 @@ function initModels(sequelize, DataTypes) {
 
   User.hasMany(UsageCounter, { foreignKey: "user_id" });
   UsageCounter.belongsTo(User, { foreignKey: "user_id" });
+
+  User.hasMany(HistoricalTarot, { foreignKey: "user_id" });
+  HistoricalTarot.belongsTo(User, { foreignKey: "user_id" });
 
   Deck.hasMany(DeckCard, { foreignKey: "deck_id" });
   DeckCard.belongsTo(Deck, { foreignKey: "deck_id" });
@@ -50,6 +55,7 @@ function initModels(sequelize, DataTypes) {
     UserProfile,
     Entitlement,
     UsageCounter,
+    HistoricalTarot,
     Deck,
     DeckCard,
     AppConfig

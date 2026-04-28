@@ -301,7 +301,7 @@
     dailyBtn.addEventListener("click", async function () {
       dailyOut.value = "Cargando...";
       try {
-        const { res, data } = await postJson("/api/tarot/daily", baseBody());
+        const { res, data } = await postJson("/api/android/tarot/daily", baseBody());
         render(dailyOut, data || { ok: false, error: "HTTP " + res.status });
       } catch (err) {
         render(dailyOut, { ok: false, error: err && err.message ? err.message : "Error de red" });
@@ -313,7 +313,7 @@
       try {
         const body = baseBody();
         body.pregunta = String(yesNoQuestion.value || "").trim();
-        const { res, data } = await postJson("/api/tarot/yes-no", body);
+        const { res, data } = await postJson("/api/android/tarot/yes-no", body);
         render(yesNoOut, data || { ok: false, error: "HTTP " + res.status });
       } catch (err) {
         render(yesNoOut, { ok: false, error: err && err.message ? err.message : "Error de red" });
@@ -339,7 +339,7 @@
           tirada
         };
 
-        const { res, data } = await postJson("/api/narrative/three-cards", body);
+        const { res, data } = await postJson("/api/android/narrative/three-cards", body);
         render(threeOut, data || { ok: false, error: "HTTP " + res.status });
       } catch (err) {
         render(threeOut, { ok: false, error: err && err.message ? err.message : "Error de red" });
@@ -371,7 +371,7 @@
           tirada: { cards }
         };
 
-        const { res, data } = await postJson("/api/gemini/tarot-reading-lite", body);
+        const { res, data } = await postJson("/api/android/gemini/tarot-reading-lite", body);
         render(geminiTarotOut, data || { ok: false, error: "HTTP " + res.status });
       } catch (err) {
         render(geminiTarotOut, { ok: false, error: err && err.message ? err.message : "Error de red" });

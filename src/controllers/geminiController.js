@@ -398,6 +398,23 @@ async function tarotReading(req, res) {
       } catch {}
     }
 
+    try {
+      await db.models.HistoricalTarot.create({
+        user_id: Number.isInteger(user_id) && user_id > 0 ? user_id : null,
+        kind: "gemini_tarot_reading",
+        tema: String(tema || "general"),
+        pregunta: String(pregunta || ""),
+        tirada: tirada && typeof tirada === "object" ? tirada : {},
+        resultado: {
+          reading,
+          perfil_tono: String(perfil_tono || "").trim() || "general",
+          reading_mode: String(reading_mode || "").trim() || "",
+          model: result.model || normalizeModelName(model) || normalizeModelName(process.env.GEMINI_MODEL) || ""
+        },
+        resultado_text: String(finalText || "")
+      });
+    } catch {}
+
     return res.json({
       ok: true,
       model: result.model || normalizeModelName(model) || normalizeModelName(process.env.GEMINI_MODEL) || "gemini-1.5-flash",
@@ -559,6 +576,23 @@ async function tarotReadingLite(req, res) {
         });
       } catch {}
     }
+
+    try {
+      await db.models.HistoricalTarot.create({
+        user_id: Number.isInteger(user_id) && user_id > 0 ? user_id : null,
+        kind: "gemini_tarot_reading_lite",
+        tema: String(tema || "general"),
+        pregunta: String(pregunta || ""),
+        tirada: tirada && typeof tirada === "object" ? tirada : {},
+        resultado: {
+          reading,
+          perfil_tono: String(perfil_tono || "").trim() || "general",
+          reading_mode: String(reading_mode || "").trim() || "",
+          model: result.model || normalizeModelName(model) || normalizeModelName(process.env.GEMINI_MODEL) || ""
+        },
+        resultado_text: String(finalText || "")
+      });
+    } catch {}
 
     return res.json({
       ok: true,

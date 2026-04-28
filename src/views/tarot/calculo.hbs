@@ -167,14 +167,14 @@
         const headers = { "Accept": "application/json", "Content-Type": "application/json" };
         if (token) headers["Authorization"] = "Bearer " + token;
 
-        const res = await fetch("/api/register", {
+        const res = await fetch("/api/android/register", {
           method: "POST",
           headers,
           body: JSON.stringify({ name, birthdate })
         });
         const data = await res.json().catch(() => null);
         if (res.status === 401) {
-          showError("Unauthorized. Define API_TOKEN en el server y pega el token aquí para probar /api.");
+          showError("Unauthorized. Define API_TOKEN en el server y pega el token aquí para probar /api/android.");
           return;
         }
         if (!res.ok || !data || data.ok !== true) {

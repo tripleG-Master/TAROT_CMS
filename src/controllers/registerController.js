@@ -141,6 +141,12 @@ async function getProfile(req, res) {
     const entitlement = await db.models.Entitlement.findOne({ where: { user_id }, order: [["createdAt", "DESC"]], raw: true });
     const period = todayUtcDateOnly();
     const usage = await db.models.UsageCounter.findOne({ where: { user_id, period }, raw: true });
+    const historyRows = await db.models.HistoricalTarot.findAll({
+      where: { user_id },
+      order: [["createdAt", "DESC"]],
+      limit: 50,
+      raw: true
+    });
     return res.json({
       ok: true,
       user: { id: user.id, external_id: user.external_id, provider: user.provider },
@@ -157,7 +163,19 @@ async function getProfile(req, res) {
       entitlement: entitlement ? { plan: entitlement.plan, status: entitlement.status, expires_at: entitlement.expires_at || null } : null,
       usage: usage
         ? { period: usage.period, requests: usage.requests, tokens_prompt: usage.tokens_prompt, tokens_output: usage.tokens_output, tokens_total: usage.tokens_total }
-        : { period, requests: 0, tokens_prompt: 0, tokens_output: 0, tokens_total: 0 }
+        : { period, requests: 0, tokens_prompt: 0, tokens_output: 0, tokens_total: 0 },
+      history: Array.isArray(historyRows)
+        ? historyRows.map((r) => ({
+            id: r.id,
+            kind: r.kind,
+            tema: r.tema,
+            pregunta: r.pregunta,
+            tirada: r.tirada,
+            resultado: r.resultado,
+            resultado_text: r.resultado_text,
+            createdAt: r.createdAt
+          }))
+        : []
     });
   } catch (err) {
     const msg = err?.message || "Error obteniendo perfil.";

@@ -9,6 +9,17 @@ async function threeCards(req, res) {
   const tema = req.body?.tema ?? req.body?.contexto ?? "general";
   const perfil_tono = req.body?.perfil_tono ?? req.body?.tono ?? "";
   const deck_id = req.body?.deck_id ?? req.body?.deckId;
+  const pregunta = req.body?.pregunta ?? req.body?.question ?? "";
+  const external_id = String(req.body?.external_id ?? req.body?.externalId ?? "").trim();
+  let user_id = Number(req.body?.user_id ?? req.body?.userId);
+  if ((!Number.isInteger(user_id) || user_id <= 0) && external_id) {
+    const existing = await db.models.User.findOne({ where: { external_id }, raw: true });
+    if (existing) user_id = existing.id;
+    else {
+      const created = await db.models.User.create({ external_id, provider: "android" });
+      user_id = created.id;
+    }
+  }
 
   const numeros = Array.isArray(tirada?.cards)
     ? tirada.cards.map((c) => Number(c?.id ?? c?.numero ?? c?.arcano_id)).filter((n) => Number.isInteger(n))
@@ -20,6 +31,19 @@ async function threeCards(req, res) {
 
   const result = await buildReading({ user, tirada, tema, perfil_tono });
   if (!result.ok) return res.status(400).json(result);
+
+  try {
+    await db.models.HistoricalTarot.create({
+      user_id: Number.isInteger(user_id) && user_id > 0 ? user_id : null,
+      kind: "narrative_three_cards",
+      tema: String(result.tema || tema || "general"),
+      pregunta: String(pregunta || ""),
+      tirada: tirada && typeof tirada === "object" ? tirada : {},
+      resultado: { reading: result.reading || {}, perfil_tono: result.perfil_tono || "" },
+      resultado_text: String(result?.lectura || "")
+    });
+  } catch {}
+
   return res.json(result);
 }
 

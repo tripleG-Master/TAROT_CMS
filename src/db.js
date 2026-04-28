@@ -328,6 +328,23 @@ async function initDb() {
       "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+
+    CREATE TABLE IF NOT EXISTS historical_tarot (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER,
+      kind TEXT NOT NULL DEFAULT '',
+      tema TEXT NOT NULL DEFAULT '',
+      pregunta TEXT NOT NULL DEFAULT '',
+      tirada JSONB NOT NULL DEFAULT '{}'::jsonb,
+      resultado JSONB NOT NULL DEFAULT '{}'::jsonb,
+      resultado_text TEXT NOT NULL DEFAULT '',
+      "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      "deletedAt" TIMESTAMPTZ
+    );
+    CREATE INDEX IF NOT EXISTS idx_historical_tarot_user_id ON historical_tarot (user_id);
+    CREATE INDEX IF NOT EXISTS idx_historical_tarot_kind ON historical_tarot (kind);
+    CREATE INDEX IF NOT EXISTS idx_historical_tarot_user_id_createdAt ON historical_tarot (user_id, "createdAt");
   `);
 
   await sequelize.sync();

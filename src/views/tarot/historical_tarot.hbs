@@ -1,0 +1,79 @@
+<main class="container py-4">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+      <h1 class="h3 brand mb-1">Historial Tarot</h1>
+      <div class="muted">Últimas lecturas guardadas por usuario.</div>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <form class="d-flex gap-2 m-0 flex-wrap" method="GET" action="/tarot/historial">
+        <input class="form-control form-control-sm" style="max-width: 160px;" name="user_id" placeholder="user_id" value="{{filters.user_id}}" />
+        <input class="form-control form-control-sm" style="max-width: 210px;" name="kind" placeholder="kind (ej: daily)" value="{{filters.kind}}" />
+        <input class="form-control form-control-sm" style="max-width: 160px;" name="tema" placeholder="tema" value="{{filters.tema}}" />
+        <input class="form-control form-control-sm" style="max-width: 260px;" name="q" placeholder="buscar en pregunta/texto" value="{{filters.q}}" />
+        <button class="btn btn-sm btn-outline-info" type="submit">Filtrar</button>
+        <a class="btn btn-sm btn-outline-secondary" href="/tarot/historial">Limpiar</a>
+      </form>
+      <a class="btn btn-outline-light" href="/tarot/users">Usuarios</a>
+    </div>
+  </div>
+
+  <div class="card p-3">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead>
+          <tr>
+            <th style="width: 92px;">ID</th>
+            <th style="width: 110px;">User</th>
+            <th style="width: 220px;">external_id</th>
+            <th style="width: 190px;">Fecha</th>
+            <th style="width: 210px;">Kind</th>
+            <th style="width: 130px;">Tema</th>
+            <th>Pregunta</th>
+            <th style="width: 260px;">Resultado</th>
+            <th style="width: 150px;">Tirada</th>
+            <th style="width: 170px;">JSON</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#unless rows.length}}
+            <tr>
+              <td colspan="10" class="py-4">
+                <div class="muted">Sin historial.</div>
+              </td>
+            </tr>
+          {{/unless}}
+          {{#each rows}}
+            <tr>
+              <td><span class="badge badge-mystic text-dark">{{id}}</span></td>
+              <td class="text-nowrap">
+                {{#if user_id}}
+                  <a class="btn btn-sm btn-outline-info py-0" href="/tarot/users?user_id={{user_id}}">{{user_id}}</a>
+                {{else}}
+                  <span class="muted">—</span>
+                {{/if}}
+              </td>
+              <td class="text-truncate" style="max-width: 240px;">{{user_external_id}}</td>
+              <td class="muted">{{createdAt}}</td>
+              <td class="text-truncate" style="max-width: 210px;">{{kind}}</td>
+              <td>{{tema}}</td>
+              <td class="text-truncate" style="max-width: 520px;">{{pregunta}}</td>
+              <td class="text-truncate" style="max-width: 260px;">{{resultado_text}}</td>
+              <td class="text-nowrap">
+                <details>
+                  <summary class="muted">Ver</summary>
+                  <pre class="small mb-0" style="max-height: 220px; overflow:auto;">{{json tirada}}</pre>
+                </details>
+              </td>
+              <td class="text-nowrap">
+                <details>
+                  <summary class="muted">Ver</summary>
+                  <pre class="small mb-0" style="max-height: 220px; overflow:auto;">{{json resultado}}</pre>
+                </details>
+              </td>
+            </tr>
+          {{/each}}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
