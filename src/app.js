@@ -12,7 +12,7 @@ const tarotRoutes = require("./routes/tarotRoutes");
 const cmsApiRoutes = require("./routes/cms/apiRoutes");
 const androidApiRoutes = require("./routes/android/apiRoutes");
 const deckRoutes = require("./routes/deckRoutes");
-const { requireApiToken } = require("./middleware/apiAuth");
+const { requireApiToken, requireCmsBasicAuth } = require("./middleware/apiAuth");
 const healthRoutes = require("./routes/healthRoutes");
 
 function createApp() {
@@ -49,6 +49,7 @@ function createApp() {
   app.use(morgan("dev"));
 
   app.use("/health", healthRoutes);
+  app.use(requireCmsBasicAuth);
 
   app.get("/", (req, res) => res.redirect("/decks"));
   app.use("/decks", deckRoutes);
