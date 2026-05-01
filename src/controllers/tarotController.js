@@ -235,6 +235,75 @@ async function showHistoricalTarot(req, res, next) {
   }
 }
 
+async function showSecurityIps(req, res, next) {
+  try {
+    const ip = String(req.query?.ip || "").trim();
+    const q = String(req.query?.q || "").trim();
+    const blocked = String(req.query?.blocked || "").trim() === "1";
+    const saved = String(req.query?.saved || "").trim() === "1";
+    const error = String(req.query?.error || "").trim();
+
+    const where = {};
+    if (ip) where.ip = { [Op.iLike]: `%${ip}%` };
+    if (q) {
+      where[Op.or] = [
+        { last_path: { [Op.iLike]: `%${q}%` } },
+        { last_user_agent: { [Op.iLike]: `%${q}%` } }
+      ];
+    }
+    if (blocked) where.blocked_until = { [Op.gt]: new Date() };
+
+    const rows = await db.models.SecurityIpRegistry.findAll({
+      where,
+      order: [["last_seen_at", "DESC"], ["id", "DESC"]],
+      limit: 500,
+      raw: true
+    });
+
+    res.render("tarot/security_ips", {
+      title: "Security · IP Registry",
+      rows,
+      saved,
+      error,
+      filters: { ip, q, blocked: blocked ? "1" : "" }
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function unblockSecurityIp(req, res, next) {
+  try {
+    const id = Number(req.params?.id);
+    if (!Number.isInteger(id) || id <= 0) return res.redirect(`/tarot/security/ips?error=${encodeURIComponent("id inválido")}`);
+    const row = await db.models.SecurityIpRegistry.findByPk(id);
+    if (!row) return res.redirect(`/tarot/security/ips?error=${encodeURIComponent("no encontrado")}`);
+    row.blocked_until = null;
+    row.consecutive_failed = 0;
+    await row.save();
+    return res.redirect("/tarot/security/ips?saved=1");
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function resetSecurityIp(req, res, next) {
+  try {
+    const id = Number(req.params?.id);
+    if (!Number.isInteger(id) || id <= 0) return res.redirect(`/tarot/security/ips?error=${encodeURIComponent("id inválido")}`);
+    const row = await db.models.SecurityIpRegistry.findByPk(id);
+    if (!row) return res.redirect(`/tarot/security/ips?error=${encodeURIComponent("no encontrado")}`);
+    row.failed_attempts = 0;
+    row.consecutive_failed = 0;
+    row.total_attempts = 0;
+    row.blocked_until = null;
+    await row.save();
+    return res.redirect("/tarot/security/ips?saved=1");
+  } catch (err) {
+    next(err);
+  }
+}
+
 function todayUtcDateOnly() {
   const now = new Date();
   const y = now.getUTCFullYear();
@@ -527,6 +596,9 @@ module.exports = {
   showGeminiGenerations,
   showGeminiTemplates,
   showHistoricalTarot,
+  showSecurityIps,
+  unblockSecurityIp,
+  resetSecurityIp,
   showUsers,
   showUserEdit,
   updateUser,

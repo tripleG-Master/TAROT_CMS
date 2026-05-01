@@ -12,6 +12,7 @@ const defineDeck = require("./Deck");
 const defineDeckCard = require("./DeckCard");
 const defineAppConfig = require("./AppConfig");
 const defineHistoricalTarot = require("./HistoricalTarot");
+const defineSecurityIpRegistry = require("./SecurityIpRegistry");
 
 function initModels(sequelize, DataTypes) {
   const MajorArcana = defineMajorArcana(sequelize, DataTypes);
@@ -28,6 +29,7 @@ function initModels(sequelize, DataTypes) {
   const DeckCard = defineDeckCard(sequelize, DataTypes);
   const AppConfig = defineAppConfig(sequelize, DataTypes);
   const HistoricalTarot = defineHistoricalTarot(sequelize, DataTypes);
+  const SecurityIpRegistry = defineSecurityIpRegistry(sequelize, DataTypes);
 
   User.hasOne(UserProfile, { foreignKey: "user_id" });
   UserProfile.belongsTo(User, { foreignKey: "user_id" });
@@ -56,6 +58,7 @@ function initModels(sequelize, DataTypes) {
     Entitlement,
     UsageCounter,
     HistoricalTarot,
+    SecurityIpRegistry,
     Deck,
     DeckCard,
     AppConfig

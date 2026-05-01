@@ -1,0 +1,79 @@
+<main class="container py-4">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+      <h1 class="h3 brand mb-1">Security · IP Registry</h1>
+      <div class="muted">Intentos de acceso y bloqueos por IP.</div>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <form class="d-flex gap-2 m-0 flex-wrap" method="GET" action="/tarot/security/ips">
+        <input class="form-control form-control-sm" style="max-width: 220px;" name="ip" placeholder="ip" value="{{filters.ip}}" />
+        <input class="form-control form-control-sm" style="max-width: 260px;" name="q" placeholder="buscar path / user-agent" value="{{filters.q}}" />
+        <div class="form-check form-check-inline mt-1">
+          <input class="form-check-input" type="checkbox" id="blocked" name="blocked" value="1" {{#if filters.blocked}}checked{{/if}} />
+          <label class="form-check-label" for="blocked">Solo bloqueadas</label>
+        </div>
+        <button class="btn btn-sm btn-outline-info" type="submit">Filtrar</button>
+        <a class="btn btn-sm btn-outline-secondary" href="/tarot/security/ips">Limpiar</a>
+      </form>
+      <a class="btn btn-outline-light" href="/tarot/users">Usuarios</a>
+    </div>
+  </div>
+
+  {{#if saved}}
+    <div class="alert alert-success">Guardado.</div>
+  {{/if}}
+  {{#if error}}
+    <div class="alert alert-danger">{{error}}</div>
+  {{/if}}
+
+  <div class="card p-3">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead>
+          <tr>
+            <th style="width: 92px;">ID</th>
+            <th style="width: 210px;">IP</th>
+            <th style="width: 190px;">Last Seen</th>
+            <th style="width: 190px;">Blocked Until</th>
+            <th style="width: 110px;">Total</th>
+            <th style="width: 110px;">Failed</th>
+            <th style="width: 140px;">Consecutive</th>
+            <th style="width: 220px;">Last Path</th>
+            <th style="width: 360px;">User-Agent</th>
+            <th style="width: 190px;">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#unless rows.length}}
+            <tr>
+              <td colspan="10" class="py-4">
+                <div class="muted">Sin datos.</div>
+              </td>
+            </tr>
+          {{/unless}}
+          {{#each rows}}
+            <tr>
+              <td><span class="badge badge-mystic text-dark">{{id}}</span></td>
+              <td class="text-truncate" style="max-width: 210px;">{{ip}}</td>
+              <td class="muted">{{last_seen_at}}</td>
+              <td class="muted">{{blocked_until}}</td>
+              <td>{{total_attempts}}</td>
+              <td>{{failed_attempts}}</td>
+              <td>{{consecutive_failed}}</td>
+              <td class="text-truncate" style="max-width: 220px;">{{last_path}}</td>
+              <td class="text-truncate" style="max-width: 360px;">{{last_user_agent}}</td>
+              <td class="text-nowrap">
+                <form method="POST" action="/tarot/security/ips/{{id}}/unblock" class="d-inline">
+                  <button type="submit" class="btn btn-sm btn-outline-warning">Unblock</button>
+                </form>
+                <form method="POST" action="/tarot/security/ips/{{id}}/reset" class="d-inline">
+                  <button type="submit" class="btn btn-sm btn-outline-secondary">Reset</button>
+                </form>
+              </td>
+            </tr>
+          {{/each}}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>

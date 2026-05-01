@@ -1,4 +1,6 @@
 const express = require("express");
+const majorArcanaController = require("../../controllers/majorArcanaController");
+const minorArcanaController = require("../../controllers/minorArcanaController");
 const geminiController = require("../../controllers/geminiController");
 const narrativeController = require("../../controllers/narrativeController");
 const tarotApiController = require("../../controllers/tarotApiController");
@@ -14,6 +16,11 @@ router.post("/entitlements/set", registerController.setEntitlement);
 router.get("/app-config", contentController.getAppConfig);
 router.get("/content/manifest", contentController.getManifest);
 router.get("/cards", contentController.getAndroidCards);
+
+router.get("/arcanos/export/arcanos.json", majorArcanaController.exportJson);
+router.get("/arcanos/export/v2/arcanos.json", majorArcanaController.exportJsonV2);
+router.get("/menores/export/v2/arcanos-menores.json", minorArcanaController.exportJsonV2);
+
 router.use("/zodiac", zodiacRoutes);
 router.post("/narrative/seed", narrativeController.seed);
 router.post("/narrative/three-cards", narrativeController.threeCards);

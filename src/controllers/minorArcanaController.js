@@ -1,5 +1,6 @@
 const fs = require("node:fs");
 const path = require("node:path");
+const crypto = require("node:crypto");
 const sharp = require("sharp");
 const db = require("../db");
 
@@ -644,6 +645,18 @@ async function importCsvFile(req, res) {
 async function exportJsonV2(req, res, next) {
   try {
     const rows = await db.MinorArcana.findAll({ order: [["numero", "ASC"]], raw: true });
+    const etag = `"${crypto.createHash("sha256").update(JSON.stringify(rows)).digest("hex")}"`;
+    res.setHeader("ETag", etag);
+    res.setHeader("Cache-Control", "public, max-age=60");
+    const maxUpdatedAt = rows.reduce((acc, r) => {
+      const v = r?.updatedAt ? new Date(r.updatedAt).getTime() : 0;
+      return v > acc ? v : acc;
+    }, 0);
+    if (maxUpdatedAt) res.setHeader("Last-Modified", new Date(maxUpdatedAt).toUTCString());
+    if (req.headers["if-none-match"] === etag) {
+      res.status(304).end();
+      return;
+    }
 
     const author = process.env.EXPORT_AUTHOR ? String(process.env.EXPORT_AUTHOR) : "Oracle Family Devs";
     const version = process.env.EXPORT_VERSION_V2 ? String(process.env.EXPORT_VERSION_V2) : "2.0.0";

@@ -50,8 +50,8 @@ async function getManifest(req, res) {
     revision: 1,
     updated_at: new Date(updatedAt || Date.now()).toISOString(),
     resources: [
-      { key: "app_config", etag: cfgEtag, updated_at: cfgUpdatedAt ? new Date(cfgUpdatedAt).toISOString() : null, url: "/api/app-config" },
-      { key: "major_arcana_export_v2", etag: arcEtag, updated_at: arcUpdated ? new Date(arcUpdated).toISOString() : null, url: "/api/arcanos/export/v2/arcanos.json" }
+      { key: "app_config", etag: cfgEtag, updated_at: cfgUpdatedAt ? new Date(cfgUpdatedAt).toISOString() : null, url: "/api/android/app-config" },
+      { key: "major_arcana_export_v2", etag: arcEtag, updated_at: arcUpdated ? new Date(arcUpdated).toISOString() : null, url: "/api/android/arcanos/export/v2/arcanos.json" }
     ]
   };
 

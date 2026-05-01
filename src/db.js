@@ -345,6 +345,21 @@ async function initDb() {
     CREATE INDEX IF NOT EXISTS idx_historical_tarot_user_id ON historical_tarot (user_id);
     CREATE INDEX IF NOT EXISTS idx_historical_tarot_kind ON historical_tarot (kind);
     CREATE INDEX IF NOT EXISTS idx_historical_tarot_user_id_createdAt ON historical_tarot (user_id, "createdAt");
+
+    CREATE TABLE IF NOT EXISTS security_ip_registry (
+      id SERIAL PRIMARY KEY,
+      ip TEXT NOT NULL UNIQUE,
+      last_path TEXT NOT NULL DEFAULT '',
+      last_user_agent TEXT NOT NULL DEFAULT '',
+      last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      total_attempts INTEGER NOT NULL DEFAULT 0,
+      failed_attempts INTEGER NOT NULL DEFAULT 0,
+      consecutive_failed INTEGER NOT NULL DEFAULT 0,
+      blocked_until TIMESTAMPTZ,
+      "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_security_ip_registry_ip ON security_ip_registry (ip);
   `);
 
   await sequelize.sync();

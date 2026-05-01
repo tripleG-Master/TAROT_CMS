@@ -14,9 +14,16 @@ const androidApiRoutes = require("./routes/android/apiRoutes");
 const deckRoutes = require("./routes/deckRoutes");
 const { requireApiToken, requireCmsBasicAuth } = require("./middleware/apiAuth");
 const healthRoutes = require("./routes/healthRoutes");
+const contentController = require("./controllers/contentController");
+const majorArcanaController = require("./controllers/majorArcanaController");
+const minorArcanaController = require("./controllers/minorArcanaController");
 
 function createApp() {
   const app = express();
+  const trustProxy = process.env.TRUST_PROXY;
+  if (typeof trustProxy === "string" && trustProxy.trim() !== "") {
+    app.set("trust proxy", trustProxy.trim());
+  }
 
   const viewsDir = path.join(__dirname, "views");
   app.engine(
@@ -49,6 +56,13 @@ function createApp() {
   app.use(morgan("dev"));
 
   app.use("/health", healthRoutes);
+  app.use("/api/health", healthRoutes);
+  app.use("/api/zodiac", zodiacRoutes);
+  app.get("/api/app-config", contentController.getAppConfig);
+  app.get("/api/content/manifest", contentController.getManifest);
+  app.get("/api/arcanos/export/arcanos.json", majorArcanaController.exportJson);
+  app.get("/api/arcanos/export/v2/arcanos.json", majorArcanaController.exportJsonV2);
+  app.get("/api/menores/export/v2/arcanos-menores.json", minorArcanaController.exportJsonV2);
   app.use(requireCmsBasicAuth);
 
   app.get("/", (req, res) => res.redirect("/decks"));
@@ -58,7 +72,7 @@ function createApp() {
   app.use("/zodiac", zodiacRoutes);
   app.use("/tarot", tarotRoutes);
   app.use("/api/cms", requireApiToken, cmsApiRoutes);
-  app.use("/api/android", requireApiToken, androidApiRoutes);
+  app.use("/api/android", androidApiRoutes);
 
 
   app.use((req, res) => {
